@@ -1,0 +1,1766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bug Report v2 — Preview</title>
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    crossorigin="anonymous" />
+
+  <!-- jsPDF + AutoTable (PDF export) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    /* ══════════════════════════════════════════════════════════
+       PAGE SHELL
+    ══════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+
+    .app-shell { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ─────────────────────────────────────────────── */
+    .sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: #1d2480;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding-bottom: 1rem;
+    }
+    .sidebar-game-header { padding: 1.5rem 1.25rem 1rem; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .sidebar-game-icon {
+      width: 60px; height: 60px; border-radius: 14px;
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; margin: 0 auto 0.75rem; text-align: center;
+    }
+    .sidebar-game-name { font-size: 1.15rem; font-weight: 700; text-align: center; margin-bottom: .2rem; }
+    .sidebar-game-sub  { font-size: .8rem; color: rgba(255,255,255,.65); text-align: center; margin-bottom: .5rem; }
+    .sidebar-link { color: rgba(255,255,255,.75); font-size: .82rem; text-decoration: underline; display: block; text-align: center; margin-bottom: .75rem; }
+    .sidebar-badges { display: flex; justify-content: center; gap: .4rem; flex-wrap: wrap; margin-bottom: .25rem; }
+    .sidebar-badge-version {
+      background: rgba(255,255,255,.15); color: #fff; border-radius: 4px;
+      font-size: .72rem; font-weight: 600; padding: 2px 7px;
+    }
+    .sidebar-badge-low {
+      background: #27ae60; color: #fff; border-radius: 4px;
+      font-size: .72rem; font-weight: 600; padding: 2px 7px;
+    }
+
+    .sidebar-people { padding: .75rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .sidebar-people-grid { display: flex; justify-content: space-around; text-align: center; }
+    .sidebar-person-label { font-size: .6rem; text-transform: uppercase; letter-spacing: .5px; color: rgba(255,255,255,.5); margin-bottom: .3rem; }
+    .sidebar-avatar {
+      width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700; margin: 0 auto .25rem;
+    }
+    .sidebar-person-name { font-size: .7rem; color: rgba(255,255,255,.8); }
+
+    .sidebar-nav { padding: .75rem 0; }
+    .sidebar-nav-label { font-size: .65rem; text-transform: uppercase; letter-spacing: .7px; color: rgba(255,255,255,.4); padding: .5rem 1.25rem .2rem; }
+    .sidebar-nav-link {
+      display: block; padding: .45rem 1.25rem;
+      font-size: .85rem; color: rgba(255,255,255,.75);
+      text-decoration: none; cursor: pointer;
+    }
+    .sidebar-nav-link:hover { color: #fff; background: rgba(255,255,255,.07); }
+    .sidebar-nav-link.active { color: #fff; border-bottom: 1px solid #fff; font-weight: 600; }
+
+    .sidebar-qr {
+      margin: .75rem 1.25rem;
+      background: #fff; border-radius: 8px; padding: .5rem;
+      width: 90px; height: 90px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .65rem; color: #999; text-align: center;
+    }
+    .sidebar-qr-label { font-size: .7rem; color: rgba(255,255,255,.55); padding: .25rem 1.25rem; text-align: center; }
+
+    /* ── Main content ────────────────────────────────────────── */
+    .main-content { flex: 1; overflow-y: auto; background: #f0f2f8; display: flex; flex-direction: column; }
+
+    .revision-header { background: #fff; padding: 1.25rem 2rem 0; border-bottom: 1px solid #e2e5f0; }
+    .revision-header-title { font-size: 1.2rem; font-weight: 700; color: #1d2480; margin-bottom: 1rem; }
+
+    .rev-row { display: flex; gap: 2rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1rem; }
+    .rev-field label { font-size: .75rem; color: #888; margin-bottom: .2rem; display: block; }
+    .rev-select {
+      border: 1px solid #d0d5e8; border-radius: 6px; padding: .35rem .75rem;
+      font-size: .85rem; min-width: 260px; background: #fff; color: #333;
+      appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23999'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right .6rem center; padding-right: 2rem;
+    }
+    .rev-status-wrapper { display: flex; align-items: center; gap: .5rem; }
+    .rev-toggle { width: 38px; height: 20px; background: #1d2480; border-radius: 10px; position: relative; cursor: pointer; }
+    .rev-toggle::after { content:''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 2px; right: 2px; }
+    .rev-date input { border: 1px solid #d0d5e8; border-radius: 6px; padding: .35rem .6rem; font-size: .85rem; }
+    .rev-note { font-size: .8rem; color: #999; margin-bottom: .75rem; }
+
+    /* ── Tab bar ─────────────────────────────────────────────── */
+    .tab-bar {
+      display: flex; gap: 0; background: #fff;
+      border-top: 1px solid #e2e5f0;
+      padding: 0 2rem;
+    }
+    .tab-btn {
+      background: none; border: none; padding: .7rem 1.25rem;
+      font-size: .9rem; color: #888; cursor: pointer;
+      border-bottom: 3px solid transparent; margin-bottom: -1px;
+      font-weight: 500; transition: color .15s;
+    }
+    .tab-btn:hover { color: #1d2480; }
+    .tab-btn.active { color: #1d2480; font-weight: 700; border-bottom-color: #1d2480; }
+    .tab-btn.active-v2 { color: #7c3aed; font-weight: 700; border-bottom-color: #7c3aed; }
+
+    /* ── Tab panes ───────────────────────────────────────────── */
+    .tab-pane { display: none; padding: 1.5rem 2rem; flex: 1; }
+    .tab-pane.active { display: block; }
+
+    /* ══════════════════════════════════════════════════════════
+       BUG REPORT V2 COMPONENT
+    ══════════════════════════════════════════════════════════ */
+
+    /* Badges */
+    .bug-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: .72rem; font-weight: 600; white-space: nowrap; letter-spacing: .3px;
+    }
+    .bug-badge--critical { background: #fde8e8; color: #c0392b; }
+    .bug-badge--high     { background: #fef0e6; color: #d35400; }
+    .bug-badge--medium   { background: #fef9e7; color: #b7950b; }
+    .bug-badge--low      { background: #e9f7ef; color: #1e8449; }
+
+    .sev-badge--critical { background: #fde8e8; color: #c0392b; }
+    .sev-badge--high     { background: #fef0e6; color: #d35400; }
+    .sev-badge--medium   { background: #fef9e7; color: #b7950b; }
+    .sev-badge--low      { background: #e9f7ef; color: #1e8449; }
+
+    .status-badge--to-correct  { background: #e8f4fd; color: #1a6fa6; }
+    .status-badge--in-progress { background: #f0e6fe; color: #7d3c98; }
+    .status-badge--standby     { background: #fef9e7; color: #b7950b; }
+    .status-badge--duplicate   { background: #f0f0f0; color: #888; }
+    .status-badge--wontfix     { background: #f0f0f0; color: #888; }
+    .status-badge--corrected   { background: #e9f7ef; color: #1e8449; }
+
+    /* Tag pills */
+    .tag-pill {
+      display: inline-block; padding: 1px 7px; border-radius: 10px;
+      font-size: .68rem; font-weight: 600; background: #eef0fb; color: #1d2480;
+      white-space: nowrap;
+    }
+
+    /* Table */
+    .bug-ticket-table thead th {
+      font-size: .75rem; text-transform: uppercase; letter-spacing: .5px; color: #666;
+    }
+    .ticket-title-cell {
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; max-width: 220px;
+    }
+    .repro-cell { font-size: .82rem; font-weight: 600; color: #555; }
+
+    /* Filter bar */
+    .filter-bar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .filter-bar select { font-size: .82rem; padding: .3rem .6rem; border: 1px solid #d0d5e8; border-radius: 6px; background: #fff; }
+    .filter-search { border: 1px solid #d0d5e8; border-radius: 6px; padding: .3rem .6rem; font-size: .82rem; min-width: 160px; }
+
+    /* Form helpers */
+    .required-label::after { content: " *"; color: #c0392b; }
+    .char-counter { font-size: .75rem; font-weight: normal; }
+    .form-section-title { font-size: .75rem; text-transform: uppercase; letter-spacing: .6px; color: #888; font-weight: 600; margin: 1rem 0 .5rem; border-top: 1px solid #eee; padding-top: .75rem; }
+
+    /* Repro scale */
+    .repro-scale-group { display: flex; gap: .35rem; }
+    .repro-scale-group input[type=radio] { display: none; }
+    .repro-scale-group label {
+      padding: .25rem .6rem; border: 1px solid #d0d5e8; border-radius: 6px;
+      font-size: .82rem; cursor: pointer; color: #555; user-select: none;
+    }
+    .repro-scale-group input[type=radio]:checked + label {
+      background: #1d2480; color: #fff; border-color: #1d2480;
+    }
+    .repro-scale-group label:hover { border-color: #1d2480; color: #1d2480; }
+
+    /* Tag checkbox pills */
+    .tag-check-group { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .tag-check-group input[type=checkbox] { display: none; }
+    .tag-check-group label {
+      padding: .2rem .65rem; border: 1px solid #d0d5e8; border-radius: 20px;
+      font-size: .8rem; cursor: pointer; color: #555; user-select: none;
+    }
+    .tag-check-group input[type=checkbox]:checked + label { background: #1d2480; color: #fff; border-color: #1d2480; }
+    .tag-check-group label:hover { border-color: #1d2480; color: #1d2480; }
+
+    /* Comment list in drawer/edit */
+    .comment-item {
+      background: #f8f9fc; border-left: 3px solid #1d2480;
+      border-radius: 0 6px 6px 0; padding: .5rem .75rem; margin-bottom: .5rem;
+    }
+    .comment-meta { font-size: .72rem; color: #888; margin-bottom: .2rem; }
+    .comment-text { font-size: .85rem; color: #333; white-space: pre-wrap; word-break: break-word; }
+
+    /* Detail drawer */
+    .bug-drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 1040; }
+    .bug-drawer {
+      position: fixed; top: 0; right: 0; bottom: 0; width: 440px; max-width: 95vw;
+      background: #fff; box-shadow: -4px 0 20px rgba(0,0,0,.15);
+      z-index: 1050; display: flex; flex-direction: column;
+      animation: slideInRight .2s ease-out;
+    }
+    @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    .bug-drawer-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 1rem 1.25rem; border-bottom: 1px solid #e9ecef; flex-shrink: 0;
+    }
+    .bug-drawer-body { overflow-y: auto; padding: 1.25rem; flex: 1; }
+    .detail-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .5px; color: #888; margin-bottom: 2px; font-weight: 600; }
+    .drawer-text { white-space: pre-wrap; word-break: break-word; font-size: .9rem; }
+    .drawer-pre {
+      background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px;
+      padding: .75rem 1rem; font-size: .85rem; white-space: pre-wrap; word-break: break-word;
+    }
+
+    /* Undo toast */
+    .undo-toast {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      background: #222; color: #fff; padding: .65rem 1.25rem;
+      border-radius: 8px; z-index: 9999; display: flex; align-items: center; gap: 1rem;
+      box-shadow: 0 4px 18px rgba(0,0,0,.3); font-size: .88rem; min-width: 280px;
+      animation: toastIn .2s ease-out;
+    }
+    @keyframes toastIn { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+    .undo-toast-bar { height: 3px; background: #7c3aed; border-radius: 2px; margin-top: .4rem; animation: shrink 5s linear forwards; }
+    @keyframes shrink { from { width: 100%; } to { width: 0%; } }
+    .undo-btn { background: #7c3aed; border: none; color: #fff; padding: .25rem .65rem; border-radius: 5px; font-size: .8rem; cursor: pointer; font-weight: 600; }
+    .undo-btn:hover { background: #6d28d9; }
+
+    /* Export section */
+    .export-bar {
+      display: flex; gap: .5rem; align-items: center; flex-wrap: wrap;
+      padding: .75rem; background: #f8f9fc; border: 1px solid #e2e5f0;
+      border-radius: 8px; margin-bottom: 1rem;
+    }
+    .export-label { font-size: .8rem; color: #666; font-weight: 600; margin-right: .25rem; }
+
+    /* Row checkbox (select mode) */
+    .row-check-col { width: 36px; }
+    .row-check { cursor: pointer; }
+
+    /* Cosmetic placeholder tabs */
+    .placeholder-section { color: #aaa; text-align: center; padding: 3rem 1rem; font-size: .95rem; }
+
+    /* Scrollable modal body */
+    .modal-dialog-scrollable .modal-body { max-height: 70vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ══════════════════════════════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════════════════════════════ -->
+  <aside class="sidebar">
+
+    <div class="sidebar-game-header">
+      <div class="sidebar-game-icon">🎮</div>
+      <div class="sidebar-game-name">Elastic Slap</div>
+      <div class="sidebar-game-sub">Ketchapp — Internal</div>
+      <a class="sidebar-link" href="#" onclick="return false">⊞ App Store Connect</a>
+      <div class="sidebar-badges">
+        <span class="sidebar-badge-version">1.3.1 ✏</span>
+        <span style="background:rgba(255,255,255,.12);color:#fff;border-radius:4px;font-size:.72rem;font-weight:600;padding:2px 7px">🔍</span>
+        <span class="sidebar-badge-low">Low</span>
+      </div>
+    </div>
+
+    <div class="sidebar-people">
+      <div class="sidebar-people-grid">
+        <div>
+          <div class="sidebar-person-label">Author</div>
+          <div class="sidebar-avatar" style="background:#5b6abf">🤖</div>
+          <div class="sidebar-person-name">Portal Bot</div>
+        </div>
+        <div>
+          <div class="sidebar-person-label">Owner</div>
+          <div class="sidebar-avatar" style="background:#2980b9">CD</div>
+          <div class="sidebar-person-name">Corentin<br>Durrieu</div>
+        </div>
+        <div>
+          <div class="sidebar-person-label">Reviewer</div>
+          <div class="sidebar-avatar" style="background:#e67e22">EB</div>
+          <div class="sidebar-person-name">Etienne<br>Bottichio</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="sidebar-nav-label">QR Code</div>
+      <span class="sidebar-nav-link active">Debugger</span>
+      <span class="sidebar-nav-link">Mediation debugger</span>
+      <span class="sidebar-nav-link">Custom GA id</span>
+    </div>
+
+    <div style="padding:0 1.25rem">
+      <div class="sidebar-qr">
+        <div style="font-size:2.2rem">▦</div>
+      </div>
+      <div class="sidebar-qr-label">Scan to open app with</div>
+    </div>
+
+  </aside>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MAIN CONTENT
+  ══════════════════════════════════════════════════════════ -->
+  <div class="main-content">
+
+    <!-- Revision header -->
+    <div class="revision-header">
+
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1">
+          <div class="revision-header-title">Revision #1 selected</div>
+          <div class="rev-row">
+            <div class="rev-field">
+              <label>Revision</label>
+              <select class="rev-select">
+                <option># 1 — Apr 15, 2026 10:15 AM</option>
+              </select>
+            </div>
+            <div class="rev-field">
+              <label>Revision status</label>
+              <div class="rev-status-wrapper">
+                <select class="rev-select" style="min-width:200px">
+                  <option>✅ Live on the store</option>
+                </select>
+                <div class="rev-toggle"></div>
+              </div>
+            </div>
+            <div class="rev-field">
+              <label>Live on store date</label>
+              <input type="text" class="rev-date" value="04/23/2026" style="border:1px solid #d0d5e8;border-radius:6px;padding:.35rem .6rem;font-size:.85rem" />
+            </div>
+          </div>
+          <div class="rev-note">Rollout is only available for Android</div>
+        </div>
+
+        <div style="text-align:right;padding-left:1.5rem;flex-shrink:0">
+          <div style="width:90px;height:90px;background:#f0f0f0;border:1px solid #ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:2.5rem;margin-left:auto;margin-bottom:.5rem">▦</div>
+          <a href="#" onclick="return false" style="display:block;font-size:.78rem;color:#1d2480">Download ZIP</a>
+          <a href="#" onclick="return false" style="display:block;font-size:.78rem;color:#1d2480">Download IPA</a>
+          <span style="font-size:.78rem;color:#666">Ipa file: </span>
+          <a href="#" onclick="return false" style="font-size:.78rem;color:#1d2480">Download build.ipa</a>
+        </div>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="setTab('details', this)">Details</button>
+        <button class="tab-btn" onclick="setTab('sdk', this)">SDK List</button>
+        <button class="tab-btn" onclick="setTab('integration', this)">Integration Manager</button>
+        <button class="tab-btn" onclick="setTab('bugs', this)" id="bugTabBtn">Bug Reports</button>
+      </div>
+    </div>
+
+    <!-- ── Details tab (cosmetic) ─────────────────────────── -->
+    <div id="tab-details" class="tab-pane active">
+      <div style="max-width:900px">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0">Comments:</h5>
+          <button class="btn btn-sm text-white" style="background:#1d2480">Add Comment</button>
+        </div>
+        <div class="bg-light rounded p-3 text-muted mb-4">No comment for the moment</div>
+
+        <div class="d-flex gap-4">
+          <div style="flex:1">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="fw-bold mb-0">Changelog:</h5>
+              <button class="btn btn-sm btn-outline-primary">✏ Edit</button>
+            </div>
+            <div class="bg-light rounded p-3">
+              <div class="small text-muted">Build 2 — Type: Release (Profilable: )</div>
+              <div class="small text-muted">Branch: origin/UpdateMayo — Commit: 7cb5981</div>
+            </div>
+          </div>
+          <div style="flex:1">
+            <h5 class="fw-bold mb-3">History of revision #1:</h5>
+            <div class="d-flex gap-2 align-items-start">
+              <div style="width:10px;height:10px;background:#1d2480;border-radius:50%;margin-top:4px;flex-shrink:0"></div>
+              <div>
+                <div class="fw-bold small" style="color:#1d2480">Thursday, April 23, 2026</div>
+                <div class="small text-muted">8:56 AM</div>
+                <div class="small">Changed state to Live on store</div>
+                <div class="small text-muted">Etienne Bottichio (Ketchapp)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SDK List tab (cosmetic) ────────────────────────── -->
+    <div id="tab-sdk" class="tab-pane">
+      <div class="placeholder-section">SDK List — content not available in preview</div>
+    </div>
+
+    <!-- ── Integration Manager tab (cosmetic) ────────────── -->
+    <div id="tab-integration" class="tab-pane">
+      <div class="placeholder-section">Integration Manager — content not available in preview</div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         BUG REPORTS TAB — FULLY FUNCTIONAL
+    ══════════════════════════════════════════════════════ -->
+    <div id="tab-bugs" class="tab-pane">
+
+      <!-- Global error -->
+      <div id="globalAlert" class="alert alert-danger alert-dismissible d-none mb-3" role="alert">
+        <span id="globalAlertText"></span>
+        <button type="button" class="btn-close" onclick="clearGlobalError()"></button>
+      </div>
+
+      <!-- Export bar -->
+      <div class="export-bar">
+        <span class="export-label">Export:</span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="exportCSV()">⬇ CSV</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="exportPDF()">⬇ PDF</button>
+        <div style="width:1px;height:20px;background:#ddd;margin:0 .25rem"></div>
+        <button class="btn btn-sm btn-outline-primary" onclick="openReportModal()" id="exportSelectedBtn">
+          📋 Create Report
+        </button>
+        <span id="selectCount" class="small text-muted ms-1 d-none"></span>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="filter-bar mb-2">
+        <select id="filterStatus" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="To correct">To correct</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Standby">Standby</option>
+          <option value="Duplicate">Duplicate</option>
+          <option value="Won't Fix">Won't Fix</option>
+          <option value="Corrected">Corrected</option>
+        </select>
+        <select id="filterSeverity" onchange="applyFilters()">
+          <option value="">All Severities</option>
+          <option value="Critical">Critical</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+        <select id="filterTag" onchange="applyFilters()">
+          <option value="">All Tags</option>
+          <option value="UI">UI</option>
+          <option value="In-App Purchase">In-App Purchase</option>
+          <option value="System">System</option>
+          <option value="Gameplay">Gameplay</option>
+          <option value="Mayo">Mayo</option>
+        </select>
+        <input id="filterSearch" type="search" class="filter-search" placeholder="🔍 Search title…" oninput="applyFilters()" />
+        <div style="margin-left:auto;display:flex;gap:.4rem">
+          <button class="btn btn-sm btn-outline-secondary" id="selectModeBtn" onclick="toggleSelectMode()">☑ Select</button>
+          <button class="btn btn-sm btn-primary" onclick="openTicketModal(null)">+ New Ticket</button>
+        </div>
+      </div>
+
+      <!-- Results count -->
+      <div id="resultsCount" class="small text-muted mb-2"></div>
+
+      <!-- Ticket table -->
+      <div class="table-responsive">
+        <table class="table table-hover align-middle bug-ticket-table mb-0">
+          <thead class="table-light">
+            <tr>
+              <th id="checkColHeader" class="row-check-col d-none"></th>
+              <th style="width:55px">ID</th>
+              <th style="width:95px">Priority</th>
+              <th style="width:95px">Severity</th>
+              <th>Title</th>
+              <th style="width:160px">Device &amp; OS</th>
+              <th style="width:65px">Repro</th>
+              <th style="width:110px">Tags</th>
+              <th style="width:120px">Status</th>
+              <th style="width:105px">Created</th>
+              <th style="width:100px"></th>
+            </tr>
+          </thead>
+          <tbody id="ticketTableBody"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /tab-bugs -->
+
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
+
+
+<!-- ════════════════════════════════════════════════════════════
+     CREATE / EDIT TICKET MODAL
+════════════════════════════════════════════════════════════ -->
+<div id="ticketModalBackdrop" class="modal-backdrop fade show d-none"></div>
+<div id="ticketModal" class="modal d-none" tabindex="-1" role="dialog" style="display:none!important">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="ticketModalTitle">New Bug Ticket</h5>
+        <button type="button" class="btn-close" onclick="closeTicketModal()"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Row: Priority + Severity + Version -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label required-label">Priority</label>
+            <select id="formPriority" class="form-select form-select-sm">
+              <option value="Critical">Critical</option>
+              <option value="High">High</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label required-label">Severity</label>
+            <select id="formSeverity" class="form-select form-select-sm">
+              <option value="Critical">Critical</option>
+              <option value="High">High</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label required-label">Affected Version</label>
+            <input id="formVersion" type="text" class="form-control form-control-sm" placeholder="e.g. 1.3.1" />
+            <div id="formVersionError" class="text-danger small mt-1 d-none"></div>
+          </div>
+        </div>
+
+        <!-- Reproduction level -->
+        <div class="mb-3">
+          <label class="form-label required-label">Reproduction Level</label>
+          <div class="repro-scale-group">
+            <input type="radio" name="formRepro" id="repro1" value="1"><label for="repro1">1/5</label>
+            <input type="radio" name="formRepro" id="repro2" value="2"><label for="repro2">2/5</label>
+            <input type="radio" name="formRepro" id="repro3" value="3"><label for="repro3">3/5</label>
+            <input type="radio" name="formRepro" id="repro4" value="4"><label for="repro4">4/5</label>
+            <input type="radio" name="formRepro" id="repro5" value="5" checked><label for="repro5">5/5</label>
+          </div>
+        </div>
+
+        <!-- Device & OS -->
+        <div class="mb-3">
+          <label class="form-label required-label">Device &amp; OS</label>
+          <input id="formDeviceOs" type="text" class="form-control form-control-sm" placeholder="e.g. iPhone 15 Pro / iOS 17.4" />
+          <div id="formDeviceOsError" class="text-danger small mt-1 d-none"></div>
+        </div>
+
+        <!-- Tags -->
+        <div class="mb-3">
+          <label class="form-label">Tags</label>
+          <div class="tag-check-group">
+            <input type="checkbox" id="tagUI"       value="UI"><label for="tagUI">UI</label>
+            <input type="checkbox" id="tagIAP"      value="In-App Purchase"><label for="tagIAP">In-App Purchase</label>
+            <input type="checkbox" id="tagSystem"   value="System"><label for="tagSystem">System</label>
+            <input type="checkbox" id="tagGameplay" value="Gameplay"><label for="tagGameplay">Gameplay</label>
+            <input type="checkbox" id="tagMayo"     value="Mayo"><label for="tagMayo">Mayo</label>
+          </div>
+        </div>
+
+        <!-- Title -->
+        <div class="mb-3">
+          <label class="form-label required-label d-flex justify-content-between">
+            <span>Title</span>
+            <span id="titleCounter" class="char-counter text-muted">0 / 80</span>
+          </label>
+          <input id="formTitle" type="text" class="form-control form-control-sm" maxlength="80"
+                 placeholder="Short, descriptive summary of the bug"
+                 oninput="updateTitleCounter()" />
+          <div id="formTitleError" class="text-danger small mt-1 d-none"></div>
+        </div>
+
+        <!-- Description -->
+        <div class="mb-3">
+          <label class="form-label required-label">Description</label>
+          <textarea id="formDescription" class="form-control form-control-sm" rows="3"
+                    placeholder="Detailed description of the bug"></textarea>
+          <div id="formDescriptionError" class="text-danger small mt-1 d-none"></div>
+        </div>
+
+        <!-- STR -->
+        <div class="mb-3">
+          <label class="form-label">STR — Steps to Reproduce</label>
+          <textarea id="formSteps" class="form-control form-control-sm" rows="4"
+                    placeholder="1. Open the app&#10;2. Navigate to…&#10;3. Observe that…"></textarea>
+        </div>
+
+        <!-- Status (visible only in edit mode) -->
+        <div class="mb-3" id="formStatusRow" style="display:none">
+          <label class="form-label">Status</label>
+          <select id="formStatus" class="form-select form-select-sm">
+            <option value="To correct">To correct</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Standby">Standby</option>
+            <option value="Duplicate">Duplicate</option>
+            <option value="Won't Fix">Won't Fix</option>
+            <option value="Corrected">Corrected</option>
+          </select>
+        </div>
+
+        <!-- Media link -->
+        <div class="mb-3">
+          <label class="form-label">Picture / Video Link</label>
+          <input id="formMediaLink" type="url" class="form-control form-control-sm" placeholder="https://…" />
+          <div id="formMediaLinkError" class="text-danger small mt-1 d-none"></div>
+        </div>
+
+        <!-- File upload -->
+        <div class="mb-3">
+          <label class="form-label">
+            Picture / Video Upload
+            <span class="text-muted small">(max 100 MB — jpg, png, gif, webp, mp4, mov, avi, mkv, webm)</span>
+          </label>
+          <input id="formFile" type="file" class="form-control form-control-sm"
+                 accept="image/*,video/*" onchange="handleFileChange(event)" />
+          <div id="fileInfo"  class="form-text text-success d-none"></div>
+          <div id="fileError" class="text-danger small mt-1 d-none"></div>
+        </div>
+
+        <!-- Existing comments (edit mode only) -->
+        <div id="existingCommentsSection" class="d-none">
+          <div class="form-section-title">Existing Comments</div>
+          <div id="existingCommentsList"></div>
+        </div>
+
+        <!-- Add comment -->
+        <div class="mb-3">
+          <label class="form-label" id="commentLabel">Comment</label>
+          <textarea id="formComment" class="form-control form-control-sm" rows="2"
+                    placeholder="Optional notes or context"></textarea>
+        </div>
+
+      </div><!-- /modal-body -->
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeTicketModal()">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="ticketSubmitBtn" onclick="handleTicketSubmit()">
+          Create Ticket
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════
+     REPORT MODAL (select tickets → CSV or PDF)
+════════════════════════════════════════════════════════════ -->
+<div id="reportModalBackdrop" class="modal-backdrop fade show d-none"></div>
+<div id="reportModal" class="modal d-none" tabindex="-1" role="dialog" style="display:none!important">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Create Report</h5>
+        <button type="button" class="btn-close" onclick="closeReportModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Report Name</label>
+            <input id="reportName" type="text" class="form-control form-control-sm"
+                   placeholder="e.g. QA Report — Sprint 12" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Game Version</label>
+            <input id="reportVersion" type="text" class="form-control form-control-sm"
+                   placeholder="e.g. 1.3.1" value="1.3.1" />
+          </div>
+        </div>
+        <div class="mb-2 small fw-semibold text-muted">Select tickets to include:</div>
+        <div id="reportTicketList" style="max-height:340px;overflow-y:auto;border:1px solid #e9ecef;border-radius:6px"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeReportModal()">Cancel</button>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="exportReportCSV()">⬇ Export CSV</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="exportReportPDF()">⬇ Export PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════
+     DETAIL DRAWER
+════════════════════════════════════════════════════════════ -->
+<div id="drawerOverlay" class="bug-drawer-overlay d-none" onclick="closeDetailDrawer()"></div>
+<div id="detailDrawer" class="bug-drawer d-none">
+  <div class="bug-drawer-header">
+    <div>
+      <span id="drawerTicketId" class="text-muted small"></span>
+      <h5 id="drawerTitle" class="mb-0"></h5>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      <button class="btn btn-sm btn-outline-primary" onclick="editFromDrawer()" id="drawerEditBtn">✏ Edit</button>
+      <button class="btn-close" onclick="closeDetailDrawer()"></button>
+    </div>
+  </div>
+  <div class="bug-drawer-body" id="drawerBody"></div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════
+     UNDO TOAST
+════════════════════════════════════════════════════════════ -->
+<div id="undoToast" class="undo-toast d-none">
+  <div style="flex:1">
+    <span id="undoToastText"></span>
+    <div class="undo-toast-bar" id="undoToastBar"></div>
+  </div>
+  <button class="undo-btn" onclick="undoDelete()">Undo</button>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════════ -->
+<script>
+
+// ══════════════════════════════════════════════════════════════
+// CONSTANTS & ENUMS
+// ══════════════════════════════════════════════════════════════
+
+const STORAGE_KEY   = 'bugReports_v2';
+const STORAGE_V1    = 'bugReports_v1';
+const STORAGE_MIGR  = 'bugReports_migrated';
+
+const PRIORITIES  = ['Critical', 'High', 'Medium', 'Low'];
+const SEVERITIES  = ['Critical', 'High', 'Medium', 'Low'];
+const STATUSES    = ['To correct', 'In Progress', 'Standby', 'Duplicate', "Won't Fix", 'Corrected'];
+const TAGS        = ['UI', 'In-App Purchase', 'System', 'Gameplay', 'Mayo'];
+
+const PRIORITY_ORDER  = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+const PRIORITY_TO_CSV = { Critical: 'P1', High: 'P2', Medium: 'P3', Low: 'P4' };
+const FIXED_STATUSES  = new Set(['Corrected', "Won't Fix"]);
+
+const CURRENT_GAME = { id: 'elastic-slap', name: 'Elastic Slap', platform: 'iOS', version: '1.3.1' };
+const CURRENT_USER = 'Etienne Bottichio';
+
+
+// ══════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════
+
+let tickets       = [];
+let nextId        = 1;
+let editingId     = null;   // null = create mode, int = edit mode
+let selectedFileValid = true;
+let drawerTicketId    = null;
+
+// Undo state
+let undoTimer    = null;
+let deletedSnap  = null;   // { ticket, idx }
+
+// Select mode
+let selectMode  = false;
+let selectedIds = new Set();
+
+// Filters
+let filters = { status: '', severity: '', tag: '', search: '' };
+
+// Report modal
+let reportTicketSelection = new Set();
+
+
+// ══════════════════════════════════════════════════════════════
+// PERSISTENCE
+// ══════════════════════════════════════════════════════════════
+
+function saveTickets() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ tickets, nextId }));
+}
+
+function loadTickets() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    const data = JSON.parse(raw);
+    tickets = (data.tickets || []).map(t => ({
+      ...t,
+      createdAt: new Date(t.createdAt),
+      updatedAt: new Date(t.updatedAt),
+      comments:  (t.comments || []).map(c => ({ ...c, createdAt: new Date(c.createdAt) })),
+    }));
+    nextId = data.nextId || (tickets.length ? Math.max(...tickets.map(t => t.id)) + 1 : 1);
+    return;
+  }
+  migrateFromV1();
+  if (tickets.length === 0) seedData();
+  saveTickets();
+}
+
+// Migrate V1 tickets (if any were stored by a server-side V1 session)
+function migrateFromV1() {
+  if (localStorage.getItem(STORAGE_MIGR)) return;
+  const raw = localStorage.getItem(STORAGE_V1);
+  if (raw) {
+    try {
+      const v1 = JSON.parse(raw);
+      const v1tickets = v1.tickets || v1 || [];
+      v1tickets.forEach(t => {
+        tickets.push(migrateV1Ticket(t));
+      });
+      nextId = tickets.length ? Math.max(...tickets.map(t => t.id)) + 1 : 1;
+    } catch(e) { /* ignore malformed V1 data */ }
+  }
+  localStorage.setItem(STORAGE_MIGR, 'true');
+}
+
+function migrateV1Ticket(t) {
+  const statusMap = {
+    Open: 'To correct', InProgress: 'In Progress', Fixed: 'Corrected',
+    Closed: 'Corrected', WontFix: "Won't Fix", Duplicate: 'Duplicate'
+  };
+  return {
+    id:               t.id || nextId++,
+    schemaVersion:    2,
+    sourceV1Id:       t.id || null,
+    priority:         t.priority || 'Medium',
+    severity:         'Medium',
+    deviceOs:         t.deviceOs || '',
+    reproductionLevel: t.isReproducible ? 5 : 1,
+    affectedVersion:  t.affectedVersion || '',
+    gameId:           CURRENT_GAME.id,
+    title:            t.title || '',
+    description:      t.description || '',
+    stepsToReproduce: t.stepsToReproduce || '',
+    mediaUrl:         t.mediaUrl || '',
+    mediaFileName:    t.mediaFilePath || '',
+    tags:             [],
+    status:           statusMap[t.status] || 'To correct',
+    comments:         t.comment ? [{ id:1, text: t.comment, author: t.createdBy || 'Unknown', createdAt: new Date(t.createdAt || Date.now()) }] : [],
+    editHistory:      [],
+    createdAt:        new Date(t.createdAt || Date.now()),
+    updatedAt:        new Date(t.updatedAt || Date.now()),
+    createdBy:        t.createdBy || 'Unknown',
+  };
+}
+
+function seedData() {
+  const d = n => new Date(Date.now() - n * 86400000);
+  tickets = [
+    make('Critical','Critical','iPhone 17 Pro / iOS 26.3', 5,'1.3.1','App crashes on login when offline',
+      'Opening the app without internet causes an immediate crash on the login screen.',
+      '1. Disable Wi-Fi and mobile data\n2. Open the app\n3. Observe crash on login screen',
+      ['System'],'To correct','Happening consistently in production.',d(3)),
+    make('High','High','Samsung Galaxy S24 / Android 14',4,'1.3.0','Dark mode resets after app restart',
+      'User\'s dark mode preference is not persisted across sessions.',
+      '1. Enable dark mode in settings\n2. Close and reopen the app\n3. Dark mode is off',
+      ['UI'],'In Progress','Might be a SharedPreferences issue.',d(7)),
+    make('High','Critical','iPhone 15 Pro / iOS 26.1',5,'1.3.1','TRY AGAIN button after Game Over does not work',
+      'After losing, pressing Try Again does nothing. Share and Like buttons work fine.',
+      '1. Play the game until you lose\n2. On the Game Over screen, press "Try Again"\n3. Nothing happens',
+      ['Gameplay','UI'],'To correct','Reproduced on Unity 4.0 build only.',d(2)),
+    make('Medium','Medium','MacBook Pro / macOS 14.4',2,'1.2.9','Profile picture upload silently fails > 5 MB',
+      'Uploading a profile image larger than 5 MB shows a success toast but the image is not saved.',
+      '',['System'],'Corrected','Fixed in build 1.3.0 — server limit raised.',d(14)),
+    make('Medium','High','iPhone 15 Pro / iOS 26.1',5,'1.3.1','In-App Purchase restore button unresponsive',
+      'The "Restore Purchases" button does nothing on first tap. Second tap sometimes works.',
+      '1. Remove app\n2. Reinstall\n3. Go to Store tab\n4. Tap "Restore Purchases"',
+      ['In-App Purchase'],'To correct','',d(5)),
+    make('Low','Low','Windows 11 / Chrome 124',3,'1.3.0','Tooltip text truncated on dashboard graph',
+      'Hovering over data points shows a tooltip that cuts off the last word.',
+      '1. Go to Dashboard\n2. Hover over any bar in the weekly chart\n3. Tooltip label is clipped',
+      ['UI'],'Standby','Low priority — cosmetic only.',d(21)),
+    make('Low','Medium','iPad mini 4 / iOS 15.8.6',5,'1.3.1','Loading times too long on old devices',
+      'The app takes over 12 seconds to reach the main menu on older hardware.',
+      '1. Install on iPad mini 4\n2. Cold-launch the app\n3. Time to main menu',
+      ['System'],'To correct','Could not reproduce on newer devices.',d(4)),
+  ];
+  nextId = tickets.length + 1;
+}
+
+function make(priority, severity, deviceOs, reproductionLevel, affectedVersion, title, description, stepsToReproduce, tags, status, commentText, createdAt) {
+  const id = nextId++;
+  return {
+    id, schemaVersion: 2, sourceV1Id: null,
+    priority, severity, deviceOs, reproductionLevel, affectedVersion,
+    gameId: CURRENT_GAME.id, title, description, stepsToReproduce,
+    mediaUrl: '', mediaFileName: '', tags, status,
+    comments: commentText ? [{ id:1, text: commentText, author: CURRENT_USER, createdAt }] : [],
+    editHistory: [],
+    createdAt, updatedAt: createdAt, createdBy: CURRENT_USER,
+  };
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// DATA OPERATIONS
+// ══════════════════════════════════════════════════════════════
+
+function sortTickets(arr) {
+  return [...arr].sort((a, b) => {
+    const aGroup = FIXED_STATUSES.has(a.status) ? 1 : 0;
+    const bGroup = FIXED_STATUSES.has(b.status) ? 1 : 0;
+    if (aGroup !== bGroup) return aGroup - bGroup;
+    return (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9);
+  });
+}
+
+function getFiltered() {
+  return tickets.filter(t => {
+    if (filters.status   && t.status   !== filters.status)   return false;
+    if (filters.severity && t.severity !== filters.severity) return false;
+    if (filters.tag      && !t.tags.includes(filters.tag))  return false;
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      if (!t.title.toLowerCase().includes(q) &&
+          !t.description.toLowerCase().includes(q) &&
+          !t.deviceOs.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function applyFilters() {
+  filters.status   = document.getElementById('filterStatus').value;
+  filters.severity = document.getElementById('filterSeverity').value;
+  filters.tag      = document.getElementById('filterTag').value;
+  filters.search   = document.getElementById('filterSearch').value.trim();
+  selectedIds.clear();
+  renderTable();
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function fmtDate(d) {
+  if (!(d instanceof Date)) d = new Date(d);
+  return d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'});
+}
+
+function fmtDateTime(d) {
+  if (!(d instanceof Date)) d = new Date(d);
+  return d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}) + ' ' +
+         d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+}
+
+function priorityClass(p) {
+  return { Critical:'bug-badge--critical', High:'bug-badge--high', Medium:'bug-badge--medium', Low:'bug-badge--low' }[p] || 'bug-badge--low';
+}
+
+function severityClass(s) {
+  return { Critical:'sev-badge--critical', High:'sev-badge--high', Medium:'sev-badge--medium', Low:'sev-badge--low' }[s] || 'sev-badge--low';
+}
+
+function statusClass(s) {
+  const m = {
+    'To correct':'status-badge--to-correct',
+    'In Progress':'status-badge--in-progress',
+    'Standby':'status-badge--standby',
+    'Duplicate':'status-badge--duplicate',
+    "Won't Fix":'status-badge--wontfix',
+    'Corrected':'status-badge--corrected',
+  };
+  return m[s] || 'status-badge--to-correct';
+}
+
+function tagsHtml(tags) {
+  if (!tags || !tags.length) return '<span class="text-muted small">—</span>';
+  return tags.map(t => `<span class="tag-pill">${esc(t)}</span>`).join(' ');
+}
+
+function showGlobalError(msg) {
+  document.getElementById('globalAlertText').textContent = msg;
+  document.getElementById('globalAlert').classList.remove('d-none');
+}
+
+function clearGlobalError() {
+  document.getElementById('globalAlert').classList.add('d-none');
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// TABLE RENDERING
+// ══════════════════════════════════════════════════════════════
+
+function renderTable() {
+  const filtered = sortTickets(getFiltered());
+  const tbody    = document.getElementById('ticketTableBody');
+  const checkCol = document.getElementById('checkColHeader');
+
+  checkCol.classList.toggle('d-none', !selectMode);
+  document.getElementById('resultsCount').textContent =
+    `Showing ${filtered.length} of ${tickets.length} ticket${tickets.length !== 1 ? 's' : ''}`;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="${selectMode ? 11 : 10}" class="text-center text-muted py-4">
+      No bug tickets match the current filters.
+    </td></tr>`;
+    return;
+  }
+
+  let html = '';
+  let lastGroup = null;
+
+  filtered.forEach(t => {
+    const isFixed = FIXED_STATUSES.has(t.status);
+    const group   = isFixed ? 'fixed' : 'unfixed';
+
+    // Visual separator between unfixed and fixed groups
+    if (lastGroup && lastGroup !== group) {
+      const colspan = selectMode ? 11 : 10;
+      html += `<tr><td colspan="${colspan}" style="background:#f8f9fc;padding:4px 8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:600;border-top:2px solid #dee2e6">
+        ✓ Corrected
+      </td></tr>`;
+    }
+    lastGroup = group;
+
+    const checked = selectedIds.has(t.id) ? 'checked' : '';
+    const checkCell = selectMode
+      ? `<td class="row-check-col"><input type="checkbox" class="row-check form-check-input" ${checked}
+             onchange="toggleRowSelect(${t.id}, this.checked)" /></td>`
+      : '';
+
+    html += `
+    <tr class="${isFixed ? 'text-muted' : ''}" style="${isFixed ? 'opacity:.75' : ''}">
+      ${checkCell}
+      <td class="text-muted small">#${t.id}</td>
+      <td><span class="bug-badge ${priorityClass(t.priority)}">${esc(t.priority)}</span></td>
+      <td><span class="bug-badge ${severityClass(t.severity)}">${esc(t.severity)}</span></td>
+      <td><span class="ticket-title-cell" title="${esc(t.title)}">${esc(t.title)}</span></td>
+      <td class="small">${esc(t.deviceOs)}</td>
+      <td class="repro-cell">${t.reproductionLevel}/5</td>
+      <td>${tagsHtml(t.tags)}</td>
+      <td><span class="bug-badge ${statusClass(t.status)}">${esc(t.status)}</span></td>
+      <td class="text-muted small">${fmtDate(t.createdAt)}</td>
+      <td>
+        <div class="d-flex gap-1">
+          <button class="btn btn-sm btn-outline-secondary py-0 px-1" title="View details"
+                  onclick="openDetailDrawer(${t.id})">&#128269;</button>
+          <button class="btn btn-sm btn-outline-primary py-0 px-1" title="Edit ticket"
+                  onclick="openTicketModal(${t.id})">&#9998;</button>
+          <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete ticket"
+                  onclick="handleDelete(${t.id})">&#128465;</button>
+        </div>
+      </td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+  updateSelectCount();
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// SELECT MODE
+// ══════════════════════════════════════════════════════════════
+
+function toggleSelectMode() {
+  selectMode = !selectMode;
+  selectedIds.clear();
+  const btn = document.getElementById('selectModeBtn');
+  btn.classList.toggle('btn-outline-secondary', !selectMode);
+  btn.classList.toggle('btn-secondary',          selectMode);
+  renderTable();
+  updateSelectCount();
+}
+
+function toggleRowSelect(id, checked) {
+  if (checked) selectedIds.add(id);
+  else         selectedIds.delete(id);
+  updateSelectCount();
+}
+
+function updateSelectCount() {
+  const el = document.getElementById('selectCount');
+  if (selectMode && selectedIds.size > 0) {
+    el.textContent = `${selectedIds.size} selected`;
+    el.classList.remove('d-none');
+  } else {
+    el.classList.add('d-none');
+  }
+}
+
+function getExportTickets() {
+  if (selectMode && selectedIds.size > 0)
+    return sortTickets(tickets.filter(t => selectedIds.has(t.id)));
+  return sortTickets(getFiltered());
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// CREATE / EDIT MODAL
+// ══════════════════════════════════════════════════════════════
+
+function openTicketModal(id) {
+  editingId = id;
+  const isEdit = id !== null;
+  const t = isEdit ? tickets.find(t => t.id === id) : null;
+
+  // Title
+  document.getElementById('ticketModalTitle').textContent =
+    isEdit ? `Edit Ticket #${id}` : 'New Bug Ticket';
+  document.getElementById('ticketSubmitBtn').textContent =
+    isEdit ? 'Save Changes' : 'Create Ticket';
+
+  // Status row (edit only)
+  document.getElementById('formStatusRow').style.display = isEdit ? '' : 'none';
+
+  // Existing comments (edit only)
+  const commSection = document.getElementById('existingCommentsSection');
+  const commLabel   = document.getElementById('commentLabel');
+  if (isEdit && t.comments.length > 0) {
+    commSection.classList.remove('d-none');
+    document.getElementById('existingCommentsList').innerHTML =
+      t.comments.map(c => `
+        <div class="comment-item">
+          <div class="comment-meta">${esc(c.author)} · ${fmtDateTime(c.createdAt)}</div>
+          <div class="comment-text">${esc(c.text)}</div>
+        </div>`).join('');
+    commLabel.textContent = 'Add New Comment';
+  } else {
+    commSection.classList.add('d-none');
+    commLabel.textContent = 'Comment';
+  }
+
+  // Populate fields
+  document.getElementById('formPriority').value   = t?.priority   || 'Medium';
+  document.getElementById('formSeverity').value   = t?.severity   || 'Medium';
+  document.getElementById('formVersion').value    = t?.affectedVersion || '';
+  document.getElementById('formDeviceOs').value   = t?.deviceOs   || '';
+  document.getElementById('formTitle').value      = t?.title      || '';
+  document.getElementById('formDescription').value= t?.description|| '';
+  document.getElementById('formSteps').value      = t?.stepsToReproduce || '';
+  document.getElementById('formMediaLink').value  = t?.mediaUrl   || '';
+  document.getElementById('formComment').value    = '';
+  document.getElementById('formStatus').value     = t?.status     || 'To correct';
+
+  // Repro scale
+  const level = t?.reproductionLevel ?? 5;
+  document.querySelectorAll('input[name="formRepro"]').forEach(r => {
+    r.checked = parseInt(r.value) === level;
+  });
+
+  // Tags
+  TAGS.forEach(tag => {
+    const el = document.getElementById('tag' + tag.replace(/[^a-zA-Z]/g,''));
+    if (el) el.checked = t?.tags?.includes(tag) || false;
+  });
+
+  // Reset file and errors
+  document.getElementById('formFile').value = '';
+  document.getElementById('fileInfo').classList.add('d-none');
+  document.getElementById('fileError').classList.add('d-none');
+  updateTitleCounter();
+  clearFormErrors();
+  selectedFileValid = true;
+
+  // Show
+  document.getElementById('ticketModalBackdrop').classList.remove('d-none');
+  const modal = document.getElementById('ticketModal');
+  modal.classList.remove('d-none');
+  modal.style.removeProperty('display');
+  modal.style.display = 'block';
+}
+
+function closeTicketModal() {
+  document.getElementById('ticketModalBackdrop').classList.add('d-none');
+  const modal = document.getElementById('ticketModal');
+  modal.classList.add('d-none');
+  modal.style.display = 'none';
+  editingId = null;
+}
+
+function handleTicketSubmit() {
+  clearFormErrors();
+  let valid = true;
+
+  const priority   = document.getElementById('formPriority').value;
+  const severity   = document.getElementById('formSeverity').value;
+  const version    = document.getElementById('formVersion').value.trim();
+  const deviceOs   = document.getElementById('formDeviceOs').value.trim();
+  const title      = document.getElementById('formTitle').value.trim();
+  const description= document.getElementById('formDescription').value.trim();
+  const steps      = document.getElementById('formSteps').value.trim();
+  const mediaLink  = document.getElementById('formMediaLink').value.trim();
+  const comment    = document.getElementById('formComment').value.trim();
+  const status     = document.getElementById('formStatus').value;
+
+  const reproEl = document.querySelector('input[name="formRepro"]:checked');
+  const repro   = reproEl ? parseInt(reproEl.value) : 5;
+
+  const tags = TAGS.filter(tag => {
+    const el = document.getElementById('tag' + tag.replace(/[^a-zA-Z]/g,''));
+    return el && el.checked;
+  });
+
+  if (!version)     { showFieldError('formVersionError',     'Affected Version is required.'); valid = false; }
+  if (!deviceOs)    { showFieldError('formDeviceOsError',    'Device & OS is required.'); valid = false; }
+  if (!title)       { showFieldError('formTitleError',       'Title is required.'); valid = false; }
+  if (!description) { showFieldError('formDescriptionError', 'Description is required.'); valid = false; }
+  if (mediaLink && !/^https?:\/\/.+/.test(mediaLink)) {
+    showFieldError('formMediaLinkError', 'Please enter a valid URL starting with http:// or https://'); valid = false;
+  }
+  if (!selectedFileValid || !valid) return;
+
+  const fileInput  = document.getElementById('formFile');
+  const fileName   = fileInput.files[0] ? fileInput.files[0].name : '';
+
+  const now = new Date();
+
+  if (editingId === null) {
+    // ── CREATE ──
+    const ticket = {
+      id: nextId++, schemaVersion: 2, sourceV1Id: null,
+      priority, severity, deviceOs, reproductionLevel: repro,
+      affectedVersion: version, gameId: CURRENT_GAME.id,
+      title, description, stepsToReproduce: steps,
+      mediaUrl: mediaLink, mediaFileName: fileName, tags,
+      status: 'To correct',
+      comments: comment ? [{ id:1, text: comment, author: CURRENT_USER, createdAt: now }] : [],
+      editHistory: [],
+      createdAt: now, updatedAt: now, createdBy: CURRENT_USER,
+    };
+    tickets.push(ticket);
+  } else {
+    // ── EDIT ──
+    const t = tickets.find(t => t.id === editingId);
+    if (!t) return;
+
+    const changes = [];
+    const track = (field, oldV, newV) => {
+      if (String(oldV) !== String(newV))
+        changes.push({ field, oldValue: String(oldV), newValue: String(newV), changedBy: CURRENT_USER, changedAt: now });
+    };
+    track('priority',         t.priority,         priority);
+    track('severity',         t.severity,         severity);
+    track('affectedVersion',  t.affectedVersion,  version);
+    track('deviceOs',         t.deviceOs,         deviceOs);
+    track('title',            t.title,            title);
+    track('description',      t.description,      description);
+    track('stepsToReproduce', t.stepsToReproduce, steps);
+    track('reproductionLevel',t.reproductionLevel,repro);
+    track('tags',             t.tags.join(','),   tags.join(','));
+    track('status',           t.status,           status);
+
+    t.priority         = priority;
+    t.severity         = severity;
+    t.affectedVersion  = version;
+    t.deviceOs         = deviceOs;
+    t.title            = title;
+    t.description      = description;
+    t.stepsToReproduce = steps;
+    t.reproductionLevel= repro;
+    t.tags             = tags;
+    t.status           = status;
+    if (mediaLink) t.mediaUrl = mediaLink;
+    if (fileName)  t.mediaFileName = fileName;
+    if (comment) {
+      const nextCommentId = (t.comments.length ? Math.max(...t.comments.map(c => c.id)) : 0) + 1;
+      t.comments.push({ id: nextCommentId, text: comment, author: CURRENT_USER, createdAt: now });
+    }
+    t.editHistory.push(...changes);
+    t.updatedAt = now;
+  }
+
+  saveTickets();
+  closeTicketModal();
+  renderTable();
+
+  // Refresh drawer if it was showing this ticket
+  if (drawerTicketId === editingId) openDetailDrawer(editingId);
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// FORM HELPERS
+// ══════════════════════════════════════════════════════════════
+
+function updateTitleCounter() {
+  const len = document.getElementById('formTitle').value.length;
+  const counter = document.getElementById('titleCounter');
+  counter.textContent = `${len} / 80`;
+  counter.className = 'char-counter ' + (len >= 72 ? 'text-danger' : len >= 60 ? 'text-warning' : 'text-muted');
+}
+
+function handleFileChange(e) {
+  const file = e.target.files[0];
+  const info  = document.getElementById('fileInfo');
+  const err   = document.getElementById('fileError');
+  if (!file) { selectedFileValid = true; info.classList.add('d-none'); return; }
+  if (file.size > 100 * 1024 * 1024) {
+    err.textContent = 'File must not exceed 100 MB.';
+    err.classList.remove('d-none'); info.classList.add('d-none');
+    selectedFileValid = false; return;
+  }
+  err.classList.add('d-none');
+  selectedFileValid = true;
+  info.textContent = `Selected: ${file.name} (${(file.size / 1_048_576).toFixed(1)} MB)`;
+  info.classList.remove('d-none');
+}
+
+function clearFormErrors() {
+  ['formVersionError','formDeviceOsError','formTitleError','formDescriptionError','formMediaLinkError']
+    .forEach(id => { const el = document.getElementById(id); el.textContent=''; el.classList.add('d-none'); });
+}
+
+function showFieldError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.classList.remove('d-none');
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// DELETE + UNDO
+// ══════════════════════════════════════════════════════════════
+
+function handleDelete(id) {
+  const idx = tickets.findIndex(t => t.id === id);
+  if (idx === -1) return;
+
+  // Cancel any pending undo (previous delete is now permanent)
+  clearTimeout(undoTimer);
+
+  // Snapshot for undo
+  deletedSnap = { ticket: JSON.parse(JSON.stringify(tickets[idx])), idx };
+  deletedSnap.ticket.createdAt = new Date(deletedSnap.ticket.createdAt);
+  deletedSnap.ticket.updatedAt = new Date(deletedSnap.ticket.updatedAt);
+  deletedSnap.ticket.comments  = deletedSnap.ticket.comments.map(c => ({...c, createdAt: new Date(c.createdAt)}));
+
+  tickets.splice(idx, 1);
+  saveTickets();
+
+  // Close drawer if it was showing this ticket
+  if (drawerTicketId === id) closeDetailDrawer();
+
+  renderTable();
+  showUndoToast(id);
+}
+
+function showUndoToast(id) {
+  const toast = document.getElementById('undoToast');
+  document.getElementById('undoToastText').textContent = `Ticket #${id} deleted.`;
+  toast.classList.remove('d-none');
+
+  // Restart the bar animation
+  const bar = document.getElementById('undoToastBar');
+  bar.style.animation = 'none';
+  bar.offsetHeight; // reflow
+  bar.style.animation = 'shrink 5s linear forwards';
+
+  undoTimer = setTimeout(() => {
+    toast.classList.add('d-none');
+    deletedSnap = null;
+  }, 5000);
+}
+
+function undoDelete() {
+  if (!deletedSnap) return;
+  clearTimeout(undoTimer);
+
+  // Re-insert at original position (or end if list changed)
+  const insertAt = Math.min(deletedSnap.idx, tickets.length);
+  tickets.splice(insertAt, 0, deletedSnap.ticket);
+  saveTickets();
+  renderTable();
+
+  document.getElementById('undoToast').classList.add('d-none');
+  deletedSnap = null;
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// DETAIL DRAWER
+// ══════════════════════════════════════════════════════════════
+
+function openDetailDrawer(id) {
+  const t = tickets.find(t => t.id === id);
+  if (!t) return;
+  drawerTicketId = id;
+
+  document.getElementById('drawerTicketId').textContent = `#${t.id}`;
+  document.getElementById('drawerTitle').textContent    = t.title;
+  document.getElementById('drawerEditBtn').onclick      = () => { closeDetailDrawer(); openTicketModal(id); };
+
+  const commentsHtml = t.comments.length
+    ? t.comments.map(c => `
+        <div class="comment-item">
+          <div class="comment-meta">${esc(c.author)} · ${fmtDateTime(c.createdAt)}</div>
+          <div class="comment-text">${esc(c.text)}</div>
+        </div>`).join('')
+    : '<span class="text-muted small">No comments.</span>';
+
+  const historyHtml = t.editHistory.length
+    ? `<table class="table table-sm" style="font-size:.78rem"><tbody>` +
+      t.editHistory.map(h => `<tr>
+        <td class="text-muted">${fmtDateTime(h.changedAt)}</td>
+        <td><strong>${esc(h.field)}</strong></td>
+        <td class="text-muted">${esc(h.oldValue) || '—'}</td>
+        <td>→</td>
+        <td>${esc(h.newValue)}</td>
+      </tr>`).join('') + `</tbody></table>`
+    : '<span class="text-muted small">No edits recorded.</span>';
+
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="row g-2 mb-3">
+      <div class="col-6">
+        <div class="detail-label">Priority</div>
+        <span class="bug-badge ${priorityClass(t.priority)}">${esc(t.priority)}</span>
+      </div>
+      <div class="col-6">
+        <div class="detail-label">Severity</div>
+        <span class="bug-badge ${severityClass(t.severity)}">${esc(t.severity)}</span>
+      </div>
+      <div class="col-6">
+        <div class="detail-label">Status</div>
+        <span class="bug-badge ${statusClass(t.status)}">${esc(t.status)}</span>
+      </div>
+      <div class="col-6">
+        <div class="detail-label">Reproduction</div>
+        <strong>${t.reproductionLevel}/5</strong>
+      </div>
+      <div class="col-6">
+        <div class="detail-label">Device &amp; OS</div>
+        <div class="small">${esc(t.deviceOs)}</div>
+      </div>
+      <div class="col-6">
+        <div class="detail-label">Affected Version</div>
+        <div class="small">${esc(t.affectedVersion)}</div>
+      </div>
+      <div class="col-12">
+        <div class="detail-label">Tags</div>
+        <div>${tagsHtml(t.tags)}</div>
+      </div>
+      <div class="col-6">
+        <div class="detail-label">Created</div>
+        <div class="small">${fmtDateTime(t.createdAt)}</div>
+      </div>
+      <div class="col-6">
+        <div class="detail-label">Last Updated</div>
+        <div class="small">${fmtDateTime(t.updatedAt)}</div>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <div class="detail-label">Description</div>
+      <p class="mb-0 drawer-text small">${esc(t.description)}</p>
+    </div>
+
+    ${t.stepsToReproduce ? `
+    <div class="mb-3">
+      <div class="detail-label">STR — Steps to Reproduce</div>
+      <pre class="drawer-pre">${esc(t.stepsToReproduce)}</pre>
+    </div>` : ''}
+
+    ${t.mediaUrl ? `
+    <div class="mb-3">
+      <div class="detail-label">Picture / Video Link</div>
+      <a href="${esc(t.mediaUrl)}" target="_blank" rel="noopener noreferrer" class="small">${esc(t.mediaUrl)}</a>
+    </div>` : ''}
+
+    ${t.mediaFileName ? `
+    <div class="mb-3">
+      <div class="detail-label">Uploaded File</div>
+      <span class="small text-muted">${esc(t.mediaFileName)}</span>
+    </div>` : ''}
+
+    <div class="mb-3">
+      <div class="detail-label">Comments (${t.comments.length})</div>
+      ${commentsHtml}
+    </div>
+
+    <div class="mb-3">
+      <div class="detail-label">Edit History (${t.editHistory.length})</div>
+      ${historyHtml}
+    </div>
+  `;
+
+  document.getElementById('drawerOverlay').classList.remove('d-none');
+  document.getElementById('detailDrawer').classList.remove('d-none');
+}
+
+function closeDetailDrawer() {
+  document.getElementById('drawerOverlay').classList.add('d-none');
+  document.getElementById('detailDrawer').classList.add('d-none');
+  drawerTicketId = null;
+}
+
+function editFromDrawer() {
+  const id = drawerTicketId;
+  closeDetailDrawer();
+  openTicketModal(id);
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// REPORT MODAL
+// ══════════════════════════════════════════════════════════════
+
+function openReportModal() {
+  const sorted = sortTickets(getFiltered());
+  reportTicketSelection = new Set(sorted.map(t => t.id));
+
+  document.getElementById('reportName').value    = '';
+  document.getElementById('reportVersion').value = CURRENT_GAME.version;
+
+  const list = document.getElementById('reportTicketList');
+  if (!sorted.length) {
+    list.innerHTML = '<div class="p-3 text-muted small">No tickets match the current filters.</div>';
+  } else {
+    list.innerHTML = sorted.map(t => `
+      <label class="d-flex align-items-center gap-2 p-2 border-bottom" style="cursor:pointer">
+        <input type="checkbox" class="form-check-input" ${reportTicketSelection.has(t.id) ? 'checked' : ''}
+               onchange="toggleReportTicket(${t.id}, this.checked)" />
+        <span class="bug-badge ${priorityClass(t.priority)}">${esc(t.priority)}</span>
+        <span class="bug-badge ${statusClass(t.status)}">${esc(t.status)}</span>
+        <span class="small"><strong>#${t.id}</strong> ${esc(t.title)}</span>
+      </label>`).join('');
+  }
+
+  document.getElementById('reportModalBackdrop').classList.remove('d-none');
+  const modal = document.getElementById('reportModal');
+  modal.classList.remove('d-none');
+  modal.style.display = 'block';
+}
+
+function closeReportModal() {
+  document.getElementById('reportModalBackdrop').classList.add('d-none');
+  const modal = document.getElementById('reportModal');
+  modal.classList.add('d-none');
+  modal.style.display = 'none';
+}
+
+function toggleReportTicket(id, checked) {
+  if (checked) reportTicketSelection.add(id);
+  else         reportTicketSelection.delete(id);
+}
+
+function getReportTickets() {
+  return sortTickets(tickets.filter(t => reportTicketSelection.has(t.id)));
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// CSV EXPORT
+// ══════════════════════════════════════════════════════════════
+
+function ticketToCSVRow(t) {
+  const lastComment = t.comments.length
+    ? t.comments[t.comments.length - 1].text : '';
+  return [
+    t.id,
+    PRIORITY_TO_CSV[t.priority] || t.priority,
+    t.deviceOs,
+    `${t.reproductionLevel}/5`,
+    t.affectedVersion,
+    t.title,
+    t.stepsToReproduce,
+    t.mediaUrl,
+    t.status,
+    lastComment,
+  ];
+}
+
+function buildCSV(ticketList, reportName, gameVersion) {
+  const date    = new Date().toLocaleDateString('en-US');
+  const version = gameVersion || CURRENT_GAME.version;
+  const name    = reportName || `${CURRENT_GAME.name} — ${CURRENT_GAME.platform} — V ${version}`;
+  const rows    = [];
+
+  // Header rows (matching template structure)
+  rows.push([name, '', '', '', '', '', '', '', date, CURRENT_USER]);
+  rows.push(['Portal hyperlink corresponding to build used for testing','','','','','','','','','']);
+  rows.push(['- BUG REPORT -','','','','','','','','','']);
+  rows.push(['ID','Prio','Device & OS','Repro','Affected versions','Quick description','STR','Picture/Video link','Status','Comments']);
+
+  const unfixed = ticketList.filter(t => !FIXED_STATUSES.has(t.status));
+  const fixed   = ticketList.filter(t =>  FIXED_STATUSES.has(t.status));
+
+  unfixed.forEach(t => rows.push(ticketToCSVRow(t)));
+
+  if (fixed.length > 0) {
+    rows.push(['Corrected','','','','','','','','','']);
+    fixed.forEach(t => rows.push(ticketToCSVRow(t)));
+  }
+
+  const csvStr = rows.map(row =>
+    row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')
+  ).join('\r\n');
+
+  return '\uFEFF' + csvStr; // UTF-8 BOM for Excel
+}
+
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportCSV() {
+  const list = getExportTickets();
+  if (!list.length) { alert('No tickets to export.'); return; }
+  const csv  = buildCSV(list, null, CURRENT_GAME.version);
+  const slug = CURRENT_GAME.name.toLowerCase().replace(/\s+/g, '-');
+  downloadFile(csv, `bug-report-${slug}-v${CURRENT_GAME.version}.csv`, 'text/csv;charset=utf-8;');
+}
+
+function exportReportCSV() {
+  const list = getReportTickets();
+  if (!list.length) { alert('Select at least one ticket.'); return; }
+  const name    = document.getElementById('reportName').value.trim() || undefined;
+  const version = document.getElementById('reportVersion').value.trim() || CURRENT_GAME.version;
+  const csv  = buildCSV(list, name, version);
+  const slug = (name || 'report').toLowerCase().replace(/\s+/g, '-');
+  downloadFile(csv, `${slug}.csv`, 'text/csv;charset=utf-8;');
+  closeReportModal();
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// PDF EXPORT
+// ══════════════════════════════════════════════════════════════
+
+function buildPDF(ticketList, reportName, gameVersion) {
+  if (typeof window.jspdf === 'undefined') {
+    alert('PDF export requires jsPDF. Please check your internet connection and reload.');
+    return null;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  const version = gameVersion || CURRENT_GAME.version;
+  const title   = reportName || `${CURRENT_GAME.name} — Bug Report — v${version}`;
+
+  doc.setFontSize(16);
+  doc.setFont(undefined, 'bold');
+  doc.text(title, 14, 18);
+
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(120);
+  doc.text(
+    `Exported: ${new Date().toLocaleDateString('en-US',{dateStyle:'long'})} by ${CURRENT_USER}  ·  ${ticketList.length} ticket(s)`,
+    14, 25
+  );
+  doc.setTextColor(0);
+
+  const unfixed = ticketList.filter(t => !FIXED_STATUSES.has(t.status));
+  const fixed   = ticketList.filter(t =>  FIXED_STATUSES.has(t.status));
+
+  const toRow = t => [
+    `#${t.id}`,
+    PRIORITY_TO_CSV[t.priority] || t.priority,
+    t.severity,
+    t.title.length > 55 ? t.title.substring(0, 52) + '…' : t.title,
+    t.deviceOs.length > 30 ? t.deviceOs.substring(0, 27) + '…' : t.deviceOs,
+    `${t.reproductionLevel}/5`,
+    t.tags.join(', ') || '—',
+    t.status,
+    t.comments.length ? t.comments[t.comments.length-1].text.substring(0,40) : '—',
+  ];
+
+  const head = [['ID','Prio','Severity','Title','Device & OS','Repro','Tags','Status','Latest Comment']];
+  const body = [...unfixed.map(toRow)];
+
+  if (fixed.length) {
+    body.push(['──', 'Corrected', '──', '──', '──', '──', '──', '──', '──']);
+    fixed.forEach(t => body.push(toRow(t)));
+  }
+
+  doc.autoTable({
+    startY: 30,
+    head,
+    body,
+    headStyles: { fillColor: [29, 36, 128], textColor: 255, fontSize: 8 },
+    bodyStyles: { fontSize: 8 },
+    alternateRowStyles: { fillColor: [245, 246, 251] },
+    didParseCell(data) {
+      if (data.section === 'body' && data.row.raw[0] === '──')
+        data.cell.styles.textColor = [150, 150, 150];
+    },
+    columnStyles: {
+      0: { cellWidth: 12 },
+      1: { cellWidth: 12 },
+      2: { cellWidth: 18 },
+      3: { cellWidth: 55 },
+      4: { cellWidth: 38 },
+      5: { cellWidth: 12 },
+      6: { cellWidth: 32 },
+      7: { cellWidth: 25 },
+      8: { cellWidth: 'auto' },
+    },
+  });
+
+  return doc;
+}
+
+function exportPDF() {
+  const list = getExportTickets();
+  if (!list.length) { alert('No tickets to export.'); return; }
+  const doc  = buildPDF(list, null, CURRENT_GAME.version);
+  if (!doc) return;
+  const slug = CURRENT_GAME.name.toLowerCase().replace(/\s+/g, '-');
+  doc.save(`bug-report-${slug}-v${CURRENT_GAME.version}.pdf`);
+}
+
+function exportReportPDF() {
+  const list = getReportTickets();
+  if (!list.length) { alert('Select at least one ticket.'); return; }
+  const name    = document.getElementById('reportName').value.trim() || undefined;
+  const version = document.getElementById('reportVersion').value.trim() || CURRENT_GAME.version;
+  const doc = buildPDF(list, name, version);
+  if (!doc) return;
+  const slug = (name || 'report').toLowerCase().replace(/\s+/g, '-');
+  doc.save(`${slug}.pdf`);
+  closeReportModal();
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// TAB NAVIGATION
+// ══════════════════════════════════════════════════════════════
+
+function setTab(name, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active','active-v2'); });
+  document.getElementById(`tab-${name}`).classList.add('active');
+  if (btn) {
+    btn.classList.add(name === 'bugs' ? 'active-v2' : 'active');
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+
+loadTickets();
+renderTable();
+
+</script>
+</body>
+</html>
