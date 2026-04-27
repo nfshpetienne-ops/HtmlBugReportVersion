@@ -1117,8 +1117,9 @@ function deviceRenderChips() {
   const wrapper = document.getElementById('deviceChipsWrapper');
   wrapper.innerHTML = deviceSelection.map(d =>
     `<span class="device-chip">${esc(d)}<button type="button" class="device-chip-remove"
+      data-device="${esc(d)}"
       onmousedown="event.preventDefault()"
-      onclick="event.stopPropagation();deviceRemove(${JSON.stringify(d)})">×</button></span>`
+      onclick="event.stopPropagation();deviceRemoveByAttr(this)">×</button></span>`
   ).join('');
   document.getElementById('deviceSearchInput').placeholder =
     deviceSelection.length === 0 ? 'Search device…' : 'Add another…';
@@ -1135,10 +1136,14 @@ function deviceRenderDropdown() {
     ? `<div class="device-option-empty">No devices match "${esc(q)}".</div>`
     : matches.map(d =>
         `<div class="device-option"
+              data-device="${esc(d)}"
               onmousedown="event.preventDefault()"
-              onclick="deviceAdd(${JSON.stringify(d)})">${esc(d)}</div>`
+              onclick="deviceAddByAttr(this)">${esc(d)}</div>`
       ).join('');
 }
+
+function deviceAddByAttr(el)    { deviceAdd(el.dataset.device); }
+function deviceRemoveByAttr(el) { deviceRemove(el.dataset.device); }
 
 
 // ══════════════════════════════════════════════════════════════
