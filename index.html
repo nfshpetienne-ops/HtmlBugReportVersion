@@ -1138,7 +1138,7 @@ function deviceRenderDropdown() {
         `<div class="device-option"
               data-device="${esc(d)}"
               onmousedown="event.preventDefault()"
-              onclick="deviceAddByAttr(this)">${esc(d)}</div>`
+              onclick="event.stopPropagation();deviceAddByAttr(this)">${esc(d)}</div>`
       ).join('');
 }
 
