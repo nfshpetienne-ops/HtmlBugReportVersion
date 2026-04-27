@@ -150,6 +150,13 @@
     .status-badge--wontfix     { background: #f0f0f0; color: #888; }
     .status-badge--corrected   { background: #e9f7ef; color: #1e8449; }
 
+    /* Category pill */
+    .cat-pill {
+      display: inline-block; padding: 1px 7px; border-radius: 10px;
+      font-size: .68rem; font-weight: 600; background: #f0f2ff; color: #1d2480;
+      white-space: nowrap;
+    }
+
     /* Tag pills */
     .tag-pill {
       display: inline-block; padding: 1px 7px; border-radius: 10px;
@@ -166,6 +173,12 @@
       overflow: hidden; max-width: 220px;
     }
     .repro-cell { font-size: .82rem; font-weight: 600; color: #555; }
+
+    /* Sortable columns */
+    .sortable-col { cursor: pointer; user-select: none; white-space: nowrap; }
+    .sortable-col:hover { background: #e9ecef; }
+    .sort-icon { display: inline-block; margin-left: .25rem; color: #c4c9d4; font-size: .78em; vertical-align: middle; }
+    .sort-icon--active { color: #0d6efd; }
 
     /* Filter bar */
     .filter-bar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
@@ -459,6 +472,16 @@
           <option value="Medium">Medium</option>
           <option value="Low">Low</option>
         </select>
+        <select id="filterCategory" onchange="applyFilters()">
+          <option value="">All Categories</option>
+          <option value="UI/Menu">UI/Menu</option>
+          <option value="Gameplay">Gameplay</option>
+          <option value="System">System</option>
+          <option value="In-App Purchase">In-App Purchase</option>
+          <option value="Audio/Video">Audio/Video</option>
+          <option value="Network">Network</option>
+          <option value="Other">Other</option>
+        </select>
         <select id="filterTag" onchange="applyFilters()">
           <option value="">All Tags</option>
           <option value="UI">UI</option>
@@ -483,15 +506,15 @@
           <thead class="table-light">
             <tr>
               <th id="checkColHeader" class="row-check-col d-none"></th>
-              <th style="width:55px">ID</th>
-              <th style="width:95px">Priority</th>
-              <th style="width:95px">Severity</th>
-              <th>Title</th>
-              <th style="width:160px">Device &amp; OS</th>
-              <th style="width:65px">Repro</th>
+              <th class="sortable-col" style="width:55px" onclick="toggleSort('id')">ID <span class="sort-icon" id="sortIcon-id">⇅</span></th>
+              <th class="sortable-col" style="width:95px" onclick="toggleSort('priority')">Priority <span class="sort-icon" id="sortIcon-priority">⇅</span></th>
+              <th class="sortable-col" style="width:95px" onclick="toggleSort('severity')">Severity <span class="sort-icon" id="sortIcon-severity">⇅</span></th>
+              <th class="sortable-col" onclick="toggleSort('title')">Title <span class="sort-icon" id="sortIcon-title">⇅</span></th>
+              <th class="sortable-col" style="width:160px" onclick="toggleSort('device')">Device &amp; OS <span class="sort-icon" id="sortIcon-device">⇅</span></th>
+              <th class="sortable-col" style="width:65px" onclick="toggleSort('repro')">Repro <span class="sort-icon" id="sortIcon-repro">⇅</span></th>
               <th style="width:110px">Tags</th>
-              <th style="width:120px">Status</th>
-              <th style="width:105px">Created</th>
+              <th class="sortable-col" style="width:120px" onclick="toggleSort('status')">Status <span class="sort-icon" id="sortIcon-status">⇅</span></th>
+              <th class="sortable-col" style="width:105px" onclick="toggleSort('created')">Created <span class="sort-icon" id="sortIcon-created">⇅</span></th>
               <th style="width:100px"></th>
             </tr>
           </thead>
@@ -520,9 +543,9 @@
 
       <div class="modal-body">
 
-        <!-- Row: Priority + Severity + Version -->
+        <!-- Row: Priority + Severity -->
         <div class="row g-3 mb-3">
-          <div class="col-md-4">
+          <div class="col-md-6">
             <label class="form-label required-label">Priority</label>
             <select id="formPriority" class="form-select form-select-sm">
               <option value="Critical">Critical</option>
@@ -531,7 +554,7 @@
               <option value="Low">Low</option>
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-6">
             <label class="form-label required-label">Severity</label>
             <select id="formSeverity" class="form-select form-select-sm">
               <option value="Critical">Critical</option>
@@ -540,10 +563,27 @@
               <option value="Low">Low</option>
             </select>
           </div>
-          <div class="col-md-4">
+        </div>
+
+        <!-- Row: Affected Version + Category -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
             <label class="form-label required-label">Affected Version</label>
             <input id="formVersion" type="text" class="form-control form-control-sm" placeholder="e.g. 1.3.1" />
             <div id="formVersionError" class="text-danger small mt-1 d-none"></div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Category</label>
+            <select id="formCategory" class="form-select form-select-sm">
+              <option value="">— None —</option>
+              <option value="UI/Menu">UI/Menu</option>
+              <option value="Gameplay">Gameplay</option>
+              <option value="System">System</option>
+              <option value="In-App Purchase">In-App Purchase</option>
+              <option value="Audio/Video">Audio/Video</option>
+              <option value="Network">Network</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
         </div>
 
@@ -702,6 +742,29 @@
 
 
 <!-- ════════════════════════════════════════════════════════════
+     DELETE CONFIRMATION MODAL
+════════════════════════════════════════════════════════════ -->
+<div id="deleteConfirmBackdrop" class="modal-backdrop fade show d-none"></div>
+<div id="deleteConfirmModal" class="modal d-none" tabindex="-1" role="dialog" style="display:none!important">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Delete Ticket</h5>
+        <button type="button" class="btn-close" onclick="cancelDelete()"></button>
+      </div>
+      <div class="modal-body">
+        <p id="deleteConfirmText" class="mb-0">Are you sure you want to delete this ticket?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="cancelDelete()">Cancel</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════
      DETAIL DRAWER
 ════════════════════════════════════════════════════════════ -->
 <div id="drawerOverlay" class="bug-drawer-overlay d-none" onclick="closeDetailDrawer()"></div>
@@ -749,9 +812,11 @@ const PRIORITIES  = ['Critical', 'High', 'Medium', 'Low'];
 const SEVERITIES  = ['Critical', 'High', 'Medium', 'Low'];
 const STATUSES    = ['To correct', 'In Progress', 'Standby', 'Duplicate', "Won't Fix", 'Corrected'];
 const TAGS        = ['UI', 'In-App Purchase', 'System', 'Gameplay', 'Mayo'];
+const CATEGORIES  = ['UI/Menu', 'Gameplay', 'System', 'In-App Purchase', 'Audio/Video', 'Network', 'Other'];
 
 const PRIORITY_ORDER  = { Critical: 0, High: 1, Medium: 2, Low: 3 };
 const PRIORITY_TO_CSV = { Critical: 'P1', High: 'P2', Medium: 'P3', Low: 'P4' };
+const STATUS_ORDER    = { 'To correct': 0, 'In Progress': 1, 'Standby': 2, 'Duplicate': 3, "Won't Fix": 4, 'Corrected': 5 };
 const FIXED_STATUSES  = new Set(['Corrected', "Won't Fix"]);
 
 const CURRENT_GAME = { id: 'elastic-slap', name: 'Elastic Slap', platform: 'iOS', version: '1.3.1' };
@@ -776,8 +841,15 @@ let deletedSnap  = null;   // { ticket, idx }
 let selectMode  = false;
 let selectedIds = new Set();
 
+// Sort state
+let sortColumn    = '';
+let sortDirection = '';
+
+// Delete confirm
+let deleteConfirmId = null;
+
 // Filters
-let filters = { status: '', severity: '', tag: '', search: '' };
+let filters = { status: '', severity: '', category: '', tag: '', search: '' };
 
 // Report modal
 let reportTicketSelection = new Set();
@@ -795,18 +867,27 @@ function loadTickets() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {
     const data = JSON.parse(raw);
-    tickets = (data.tickets || []).map(t => ({
-      ...t,
-      createdAt: new Date(t.createdAt),
-      updatedAt: new Date(t.updatedAt),
-      comments:  (t.comments || []).map(c => ({ ...c, createdAt: new Date(c.createdAt) })),
-    }));
+    tickets = (data.tickets || []).map(t => {
+      migrateTicketFields(t);
+      return {
+        ...t,
+        createdAt: new Date(t.createdAt),
+        updatedAt: new Date(t.updatedAt),
+        comments:  (t.comments || []).map(c => ({ ...c, createdAt: new Date(c.createdAt) })),
+      };
+    });
     nextId = data.nextId || (tickets.length ? Math.max(...tickets.map(t => t.id)) + 1 : 1);
     return;
   }
   migrateFromV1();
   if (tickets.length === 0) seedData();
   saveTickets();
+}
+
+// Add fields that may be missing from older stored tickets
+function migrateTicketFields(t) {
+  if (t.category === undefined) t.category = '';
+  return t;
 }
 
 // Migrate V1 tickets (if any were stored by a server-side V1 session)
@@ -847,6 +928,7 @@ function migrateV1Ticket(t) {
     mediaUrl:         t.mediaUrl || '',
     mediaFileName:    t.mediaFilePath || '',
     tags:             [],
+    category:         '',
     status:           statusMap[t.status] || 'To correct',
     comments:         t.comment ? [{ id:1, text: t.comment, author: t.createdBy || 'Unknown', createdAt: new Date(t.createdAt || Date.now()) }] : [],
     editHistory:      [],
@@ -862,41 +944,42 @@ function seedData() {
     make('Critical','Critical','iPhone 17 Pro / iOS 26.3', 5,'1.3.1','App crashes on login when offline',
       'Opening the app without internet causes an immediate crash on the login screen.',
       '1. Disable Wi-Fi and mobile data\n2. Open the app\n3. Observe crash on login screen',
-      ['System'],'To correct','Happening consistently in production.',d(3)),
+      ['System'],'To correct','Happening consistently in production.',d(3),'System'),
     make('High','High','Samsung Galaxy S24 / Android 14',4,'1.3.0','Dark mode resets after app restart',
       'User\'s dark mode preference is not persisted across sessions.',
       '1. Enable dark mode in settings\n2. Close and reopen the app\n3. Dark mode is off',
-      ['UI'],'In Progress','Might be a SharedPreferences issue.',d(7)),
+      ['UI'],'In Progress','Might be a SharedPreferences issue.',d(7),'UI/Menu'),
     make('High','Critical','iPhone 15 Pro / iOS 26.1',5,'1.3.1','TRY AGAIN button after Game Over does not work',
       'After losing, pressing Try Again does nothing. Share and Like buttons work fine.',
       '1. Play the game until you lose\n2. On the Game Over screen, press "Try Again"\n3. Nothing happens',
-      ['Gameplay','UI'],'To correct','Reproduced on Unity 4.0 build only.',d(2)),
+      ['Gameplay','UI'],'To correct','Reproduced on Unity 4.0 build only.',d(2),'Gameplay'),
     make('Medium','Medium','MacBook Pro / macOS 14.4',2,'1.2.9','Profile picture upload silently fails > 5 MB',
       'Uploading a profile image larger than 5 MB shows a success toast but the image is not saved.',
-      '',['System'],'Corrected','Fixed in build 1.3.0 — server limit raised.',d(14)),
+      '',['System'],'Corrected','Fixed in build 1.3.0 — server limit raised.',d(14),'System'),
     make('Medium','High','iPhone 15 Pro / iOS 26.1',5,'1.3.1','In-App Purchase restore button unresponsive',
       'The "Restore Purchases" button does nothing on first tap. Second tap sometimes works.',
       '1. Remove app\n2. Reinstall\n3. Go to Store tab\n4. Tap "Restore Purchases"',
-      ['In-App Purchase'],'To correct','',d(5)),
+      ['In-App Purchase'],'To correct','',d(5),'In-App Purchase'),
     make('Low','Low','Windows 11 / Chrome 124',3,'1.3.0','Tooltip text truncated on dashboard graph',
       'Hovering over data points shows a tooltip that cuts off the last word.',
       '1. Go to Dashboard\n2. Hover over any bar in the weekly chart\n3. Tooltip label is clipped',
-      ['UI'],'Standby','Low priority — cosmetic only.',d(21)),
+      ['UI'],'Standby','Low priority — cosmetic only.',d(21),'UI/Menu'),
     make('Low','Medium','iPad mini 4 / iOS 15.8.6',5,'1.3.1','Loading times too long on old devices',
       'The app takes over 12 seconds to reach the main menu on older hardware.',
       '1. Install on iPad mini 4\n2. Cold-launch the app\n3. Time to main menu',
-      ['System'],'To correct','Could not reproduce on newer devices.',d(4)),
+      ['System'],'To correct','Could not reproduce on newer devices.',d(4),'System'),
   ];
   nextId = tickets.length + 1;
 }
 
-function make(priority, severity, deviceOs, reproductionLevel, affectedVersion, title, description, stepsToReproduce, tags, status, commentText, createdAt) {
+function make(priority, severity, deviceOs, reproductionLevel, affectedVersion, title, description, stepsToReproduce, tags, status, commentText, createdAt, category) {
   const id = nextId++;
   return {
     id, schemaVersion: 2, sourceV1Id: null,
     priority, severity, deviceOs, reproductionLevel, affectedVersion,
     gameId: CURRENT_GAME.id, title, description, stepsToReproduce,
-    mediaUrl: '', mediaFileName: '', tags, status,
+    mediaUrl: '', mediaFileName: '', tags, category: category || '',
+    status,
     comments: commentText ? [{ id:1, text: commentText, author: CURRENT_USER, createdAt }] : [],
     editHistory: [],
     createdAt, updatedAt: createdAt, createdBy: CURRENT_USER,
@@ -909,11 +992,39 @@ function make(priority, severity, deviceOs, reproductionLevel, affectedVersion, 
 // ══════════════════════════════════════════════════════════════
 
 function sortTickets(arr) {
+  const active = arr.filter(t => !FIXED_STATUSES.has(t.status));
+  const fixed  = arr.filter(t =>  FIXED_STATUSES.has(t.status));
+
+  if (!sortColumn) {
+    // Default: sort each group by priority
+    const byPrio = t => PRIORITY_ORDER[t.priority] ?? 9;
+    return [
+      ...[...active].sort((a, b) => byPrio(a) - byPrio(b)),
+      ...[...fixed].sort((a, b)  => byPrio(a) - byPrio(b)),
+    ];
+  }
+
+  return [...applySort(active), ...applySort(fixed)];
+}
+
+function applySort(arr) {
+  const desc = sortDirection === 'desc';
   return [...arr].sort((a, b) => {
-    const aGroup = FIXED_STATUSES.has(a.status) ? 1 : 0;
-    const bGroup = FIXED_STATUSES.has(b.status) ? 1 : 0;
-    if (aGroup !== bGroup) return aGroup - bGroup;
-    return (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9);
+    let va, vb;
+    switch (sortColumn) {
+      case 'id':       va = a.id;      vb = b.id;      break;
+      case 'priority': va = PRIORITY_ORDER[a.priority] ?? 9; vb = PRIORITY_ORDER[b.priority] ?? 9; break;
+      case 'severity': va = PRIORITY_ORDER[a.severity] ?? 9; vb = PRIORITY_ORDER[b.severity] ?? 9; break;
+      case 'title':    va = a.title.toLowerCase(); vb = b.title.toLowerCase(); break;
+      case 'device':   va = (a.deviceOs || '').toLowerCase(); vb = (b.deviceOs || '').toLowerCase(); break;
+      case 'repro':    va = a.reproductionLevel; vb = b.reproductionLevel; break;
+      case 'status':   va = STATUS_ORDER[a.status] ?? 9; vb = STATUS_ORDER[b.status] ?? 9; break;
+      case 'created':  va = a.createdAt.getTime(); vb = b.createdAt.getTime(); break;
+      default:         return 0;
+    }
+    if (va < vb) return desc ? 1 : -1;
+    if (va > vb) return desc ? -1 : 1;
+    return 0;
   });
 }
 
@@ -921,12 +1032,13 @@ function getFiltered() {
   return tickets.filter(t => {
     if (filters.status   && t.status   !== filters.status)   return false;
     if (filters.severity && t.severity !== filters.severity) return false;
+    if (filters.category && (t.category || '') !== filters.category) return false;
     if (filters.tag      && !t.tags.includes(filters.tag))  return false;
     if (filters.search) {
       const q = filters.search.toLowerCase();
       if (!t.title.toLowerCase().includes(q) &&
           !t.description.toLowerCase().includes(q) &&
-          !t.deviceOs.toLowerCase().includes(q)) return false;
+          !(t.deviceOs || '').toLowerCase().includes(q)) return false;
     }
     return true;
   });
@@ -935,10 +1047,43 @@ function getFiltered() {
 function applyFilters() {
   filters.status   = document.getElementById('filterStatus').value;
   filters.severity = document.getElementById('filterSeverity').value;
+  filters.category = document.getElementById('filterCategory').value;
   filters.tag      = document.getElementById('filterTag').value;
   filters.search   = document.getElementById('filterSearch').value.trim();
   selectedIds.clear();
   renderTable();
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// SORT
+// ══════════════════════════════════════════════════════════════
+
+function toggleSort(col) {
+  if (sortColumn === col) {
+    if (sortDirection === 'asc')  { sortDirection = 'desc'; }
+    else if (sortDirection === 'desc') { sortColumn = ''; sortDirection = ''; }
+    else { sortDirection = 'asc'; }
+  } else {
+    sortColumn    = col;
+    sortDirection = 'asc';
+  }
+  renderTable();
+}
+
+function updateSortIcons() {
+  const cols = ['id', 'priority', 'severity', 'title', 'device', 'repro', 'status', 'created'];
+  cols.forEach(col => {
+    const el = document.getElementById(`sortIcon-${col}`);
+    if (!el) return;
+    if (sortColumn === col) {
+      el.textContent = sortDirection === 'asc' ? '↑' : '↓';
+      el.className   = 'sort-icon sort-icon--active';
+    } else {
+      el.textContent = '⇅';
+      el.className   = 'sort-icon';
+    }
+  });
 }
 
 
@@ -1012,6 +1157,8 @@ function renderTable() {
   document.getElementById('resultsCount').textContent =
     `Showing ${filtered.length} of ${tickets.length} ticket${tickets.length !== 1 ? 's' : ''}`;
 
+  updateSortIcons();
+
   if (!filtered.length) {
     tbody.innerHTML = `<tr><td colspan="${selectMode ? 11 : 10}" class="text-center text-muted py-4">
       No bug tickets match the current filters.
@@ -1060,7 +1207,7 @@ function renderTable() {
           <button class="btn btn-sm btn-outline-primary py-0 px-1" title="Edit ticket"
                   onclick="openTicketModal(${t.id})">&#9998;</button>
           <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete ticket"
-                  onclick="handleDelete(${t.id})">&#128465;</button>
+                  onclick="showDeleteConfirm(${t.id})">&#128465;</button>
         </div>
       </td>
     </tr>`;
@@ -1147,6 +1294,7 @@ function openTicketModal(id) {
   document.getElementById('formPriority').value   = t?.priority   || 'Medium';
   document.getElementById('formSeverity').value   = t?.severity   || 'Medium';
   document.getElementById('formVersion').value    = t?.affectedVersion || '';
+  document.getElementById('formCategory').value   = t?.category   || '';
   document.getElementById('formDeviceOs').value   = t?.deviceOs   || '';
   document.getElementById('formTitle').value      = t?.title      || '';
   document.getElementById('formDescription').value= t?.description|| '';
@@ -1198,6 +1346,7 @@ function handleTicketSubmit() {
   const priority   = document.getElementById('formPriority').value;
   const severity   = document.getElementById('formSeverity').value;
   const version    = document.getElementById('formVersion').value.trim();
+  const category   = document.getElementById('formCategory').value;
   const deviceOs   = document.getElementById('formDeviceOs').value.trim();
   const title      = document.getElementById('formTitle').value.trim();
   const description= document.getElementById('formDescription').value.trim();
@@ -1235,7 +1384,7 @@ function handleTicketSubmit() {
       priority, severity, deviceOs, reproductionLevel: repro,
       affectedVersion: version, gameId: CURRENT_GAME.id,
       title, description, stepsToReproduce: steps,
-      mediaUrl: mediaLink, mediaFileName: fileName, tags,
+      mediaUrl: mediaLink, mediaFileName: fileName, tags, category,
       status: 'To correct',
       comments: comment ? [{ id:1, text: comment, author: CURRENT_USER, createdAt: now }] : [],
       editHistory: [],
@@ -1255,6 +1404,7 @@ function handleTicketSubmit() {
     track('priority',         t.priority,         priority);
     track('severity',         t.severity,         severity);
     track('affectedVersion',  t.affectedVersion,  version);
+    track('category',         t.category || '',   category);
     track('deviceOs',         t.deviceOs,         deviceOs);
     track('title',            t.title,            title);
     track('description',      t.description,      description);
@@ -1266,6 +1416,7 @@ function handleTicketSubmit() {
     t.priority         = priority;
     t.severity         = severity;
     t.affectedVersion  = version;
+    t.category         = category;
     t.deviceOs         = deviceOs;
     t.title            = title;
     t.description      = description;
@@ -1333,6 +1484,31 @@ function showFieldError(id, msg) {
 // ══════════════════════════════════════════════════════════════
 // DELETE + UNDO
 // ══════════════════════════════════════════════════════════════
+
+function showDeleteConfirm(id) {
+  deleteConfirmId = id;
+  const t = tickets.find(t => t.id === id);
+  document.getElementById('deleteConfirmText').textContent =
+    `Are you sure you want to delete ticket #${id}${t ? ` — "${t.title}"` : ''}?`;
+  document.getElementById('deleteConfirmBackdrop').classList.remove('d-none');
+  const modal = document.getElementById('deleteConfirmModal');
+  modal.classList.remove('d-none');
+  modal.style.display = 'block';
+}
+
+function cancelDelete() {
+  deleteConfirmId = null;
+  document.getElementById('deleteConfirmBackdrop').classList.add('d-none');
+  const modal = document.getElementById('deleteConfirmModal');
+  modal.classList.add('d-none');
+  modal.style.display = 'none';
+}
+
+function confirmDelete() {
+  const id = deleteConfirmId;
+  cancelDelete();
+  handleDelete(id);
+}
 
 function handleDelete(id) {
   const idx = tickets.findIndex(t => t.id === id);
@@ -1447,7 +1623,12 @@ function openDetailDrawer(id) {
         <div class="detail-label">Affected Version</div>
         <div class="small">${esc(t.affectedVersion)}</div>
       </div>
-      <div class="col-12">
+      ${t.category ? `
+      <div class="col-6">
+        <div class="detail-label">Category</div>
+        <span class="cat-pill">${esc(t.category)}</span>
+      </div>` : ''}
+      <div class="col-${t.category ? '6' : '12'}">
         <div class="detail-label">Tags</div>
         <div>${tagsHtml(t.tags)}</div>
       </div>
@@ -1564,49 +1745,45 @@ function getReportTickets() {
 // CSV EXPORT
 // ══════════════════════════════════════════════════════════════
 
-function ticketToCSVRow(t) {
-  const lastComment = t.comments.length
-    ? t.comments[t.comments.length - 1].text : '';
-  return [
-    t.id,
-    PRIORITY_TO_CSV[t.priority] || t.priority,
-    t.deviceOs,
-    `${t.reproductionLevel}/5`,
-    t.affectedVersion,
-    t.title,
-    t.stepsToReproduce,
-    t.mediaUrl,
-    t.status,
-    lastComment,
-  ];
+function splitDeviceOs(t) {
+  const raw = t.deviceOs || '';
+  if (raw.includes(' \u2014 ')) {
+    const p = raw.split(' \u2014 ', 2);
+    return { device: p[0].trim(), os: p[1].trim() };
+  }
+  if (raw.includes(' / ')) {
+    const p = raw.split(' / ', 2);
+    return { device: p[0].trim(), os: p[1].trim() };
+  }
+  return { device: raw.trim(), os: '' };
 }
 
-function buildCSV(ticketList, reportName, gameVersion) {
-  const date    = new Date().toLocaleDateString('en-US');
-  const version = gameVersion || CURRENT_GAME.version;
-  const name    = reportName || `${CURRENT_GAME.name} — ${CURRENT_GAME.platform} — V ${version}`;
-  const rows    = [];
-
-  // Header rows (matching template structure)
-  rows.push([name, '', '', '', '', '', '', '', date, CURRENT_USER]);
-  rows.push(['Portal hyperlink corresponding to build used for testing','','','','','','','','','']);
-  rows.push(['- BUG REPORT -','','','','','','','','','']);
-  rows.push(['ID','Prio','Device & OS','Repro','Affected versions','Quick description','STR','Picture/Video link','Status','Comments']);
-
-  const unfixed = ticketList.filter(t => !FIXED_STATUSES.has(t.status));
-  const fixed   = ticketList.filter(t =>  FIXED_STATUSES.has(t.status));
-
-  unfixed.forEach(t => rows.push(ticketToCSVRow(t)));
-
-  if (fixed.length > 0) {
-    rows.push(['Corrected','','','','','','','','','']);
-    fixed.forEach(t => rows.push(ticketToCSVRow(t)));
-  }
-
+function buildCSV(ticketList) {
+  const rows = [
+    ['Quick description','ID','Prio','Device','OS','Repro','Affected versions','STR','Picture/Video link','Status','Comments','Category'],
+  ];
+  ticketList.forEach(t => {
+    const { device, os } = splitDeviceOs(t);
+    const str = (t.stepsToReproduce || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ');
+    const lastComment = t.comments.length ? t.comments[t.comments.length - 1].text : '';
+    rows.push([
+      t.title,
+      t.id,
+      PRIORITY_TO_CSV[t.priority] || t.priority,
+      device,
+      os,
+      `${t.reproductionLevel}/5`,
+      t.affectedVersion,
+      str,
+      t.mediaUrl || '',
+      t.status,
+      lastComment,
+      t.category || '',
+    ]);
+  });
   const csvStr = rows.map(row =>
     row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')
   ).join('\r\n');
-
   return '\uFEFF' + csvStr; // UTF-8 BOM for Excel
 }
 
@@ -1623,7 +1800,7 @@ function downloadFile(content, filename, mime) {
 function exportCSV() {
   const list = getExportTickets();
   if (!list.length) { alert('No tickets to export.'); return; }
-  const csv  = buildCSV(list, null, CURRENT_GAME.version);
+  const csv  = buildCSV(list);
   const slug = CURRENT_GAME.name.toLowerCase().replace(/\s+/g, '-');
   downloadFile(csv, `bug-report-${slug}-v${CURRENT_GAME.version}.csv`, 'text/csv;charset=utf-8;');
 }
@@ -1631,10 +1808,9 @@ function exportCSV() {
 function exportReportCSV() {
   const list = getReportTickets();
   if (!list.length) { alert('Select at least one ticket.'); return; }
-  const name    = document.getElementById('reportName').value.trim() || undefined;
-  const version = document.getElementById('reportVersion').value.trim() || CURRENT_GAME.version;
-  const csv  = buildCSV(list, name, version);
-  const slug = (name || 'report').toLowerCase().replace(/\s+/g, '-');
+  const name = document.getElementById('reportName').value.trim() || 'report';
+  const csv  = buildCSV(list);
+  const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'report';
   downloadFile(csv, `${slug}.csv`, 'text/csv;charset=utf-8;');
   closeReportModal();
 }
@@ -1652,66 +1828,148 @@ function buildPDF(ticketList, reportName, gameVersion) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
+  const PRIORITY_MAP = { Critical: 'P1', High: 'P2', Medium: 'P3', Low: 'P4' };
+  const CAT_ORDER    = ['UI/Menu', 'Gameplay', 'System', 'In-App Purchase', 'Audio/Video', 'Network', 'Other'];
+
+  const PRIO_FILL = { P1:[220,53,69],  P2:[253,126,20], P3:[255,193,7],  P4:[40,167,69]  };
+  const PRIO_TEXT = { P1:[255,255,255],P2:[255,255,255],P3:[30,30,30],   P4:[255,255,255]};
+  const STATUS_FILL = {
+    'To correct': [220,53,69],   'In Progress': [253,126,20],
+    'Standby':    [100,120,165], 'Duplicate':   [108,117,125],
+    "Won't Fix":  [108,117,125], 'Corrected':   [40,167,69],
+  };
+
+  const pageW   = doc.internal.pageSize.getWidth();  // 297 mm landscape
+  const margin  = 5;
   const version = gameVersion || CURRENT_GAME.version;
-  const title   = reportName || `${CURRENT_GAME.name} — Bug Report — v${version}`;
+  const title   = reportName || `${CURRENT_GAME.name} \u2014 ${CURRENT_GAME.platform} \u2014 V ${version}`;
+  const today   = new Date().toLocaleDateString('fr-FR');
 
-  doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
-  doc.text(title, 14, 18);
+  // ── Header row 1: dark navy banner ────────────────────────────
+  doc.setFillColor(29, 36, 128);
+  doc.rect(margin, margin, pageW - margin * 2, 12, 'F');
 
-  doc.setFontSize(9);
+  // Game abbreviation box (red, left edge)
+  doc.setFillColor(231, 76, 60);
+  doc.rect(margin, margin, 16, 12, 'F');
+  doc.setFontSize(7.5); doc.setFont(undefined, 'bold'); doc.setTextColor(255, 255, 255);
+  doc.text('ES', margin + 8, margin + 8, { align: 'center' });
+
+  // Game title centred in banner
+  doc.setFontSize(13);
+  doc.text(title, pageW / 2, margin + 8.5, { align: 'center' });
+
+  // Date + author stacked on the right
+  doc.setFontSize(8); doc.setFont(undefined, 'normal');
+  doc.text(today, pageW - margin - 2, margin + 5,    { align: 'right' });
+  doc.text(CURRENT_USER, pageW - margin - 2, margin + 11, { align: 'right' });
+
+  // ── Header row 2: URL row (light grey) ────────────────────────
+  doc.setFillColor(240, 241, 247);
+  doc.rect(margin, margin + 12, pageW - margin * 2, 7, 'F');
+  doc.setFontSize(7); doc.setTextColor(30, 30, 200);
+  doc.text('Portal hyperlink \u2014 URL corresponding to the build used for testing',
+           margin + 2, margin + 17);
+
+  // "RESTRICTED PROJECT / SERVICE" badge (right side of URL row)
+  const badgeW = 58, badgeX = pageW - margin - badgeW;
+  doc.setFillColor(220, 53, 69);
+  doc.roundedRect(badgeX, margin + 13, badgeW, 5.5, 1, 1, 'F');
+  doc.setFontSize(6.5); doc.setFont(undefined, 'bold'); doc.setTextColor(255, 255, 255);
+  doc.text('RESTRICTED PROJECT / SERVICE', badgeX + badgeW / 2, margin + 17, { align: 'center' });
+
+  // ── Header row 3: "- BUG REPORT -" ───────────────────────────
+  doc.setFontSize(12); doc.setFont(undefined, 'bold'); doc.setTextColor(0, 0, 0);
+  doc.text('- BUG REPORT -', pageW / 2, margin + 26, { align: 'center' });
   doc.setFont(undefined, 'normal');
-  doc.setTextColor(120);
-  doc.text(
-    `Exported: ${new Date().toLocaleDateString('en-US',{dateStyle:'long'})} by ${CURRENT_USER}  ·  ${ticketList.length} ticket(s)`,
-    14, 25
-  );
-  doc.setTextColor(0);
+
+  // ── Build table body ─────────────────────────────────────────
+  const toRow = t => [
+    t.id,
+    PRIORITY_MAP[t.priority] || t.priority,
+    t.deviceOs  || '',
+    `${t.reproductionLevel}/5`,
+    t.affectedVersion || '',
+    t.title || '',
+    (t.stepsToReproduce || '').replace(/\r\n/g, '\n').trim(),
+    t.mediaUrl  || '',
+    t.status    || '',
+    t.comments.length ? t.comments[t.comments.length - 1].text : '',
+  ];
 
   const unfixed = ticketList.filter(t => !FIXED_STATUSES.has(t.status));
   const fixed   = ticketList.filter(t =>  FIXED_STATUSES.has(t.status));
+  const body    = [];
 
-  const toRow = t => [
-    `#${t.id}`,
-    PRIORITY_TO_CSV[t.priority] || t.priority,
-    t.severity,
-    t.title.length > 55 ? t.title.substring(0, 52) + '…' : t.title,
-    t.deviceOs.length > 30 ? t.deviceOs.substring(0, 27) + '…' : t.deviceOs,
-    `${t.reproductionLevel}/5`,
-    t.tags.join(', ') || '—',
-    t.status,
-    t.comments.length ? t.comments[t.comments.length-1].text.substring(0,40) : '—',
-  ];
+  // Group unfixed tickets by category (reference order)
+  const usedCats = [...new Set(unfixed.map(t => t.category || ''))];
+  usedCats.sort((a, b) => {
+    const ai = CAT_ORDER.indexOf(a); const bi = CAT_ORDER.indexOf(b);
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+  });
+  for (const cat of usedCats) {
+    const group = unfixed.filter(t => (t.category || '') === cat);
+    if (!group.length) continue;
+    body.push([{ content: cat || '\u2014', colSpan: 10,
+      styles: { fillColor:[220,222,235], textColor:[20,20,80],
+                fontStyle:'bold', fontSize:7,
+                cellPadding:{ top:2, bottom:2, left:4, right:4 } } }]);
+    group.forEach(t => body.push(toRow(t)));
+  }
 
-  const head = [['ID','Prio','Severity','Title','Device & OS','Repro','Tags','Status','Latest Comment']];
-  const body = [...unfixed.map(toRow)];
-
+  // Fixed / Won't-Fix section at the bottom
   if (fixed.length) {
-    body.push(['──', 'Corrected', '──', '──', '──', '──', '──', '──', '──']);
+    body.push([{ content: "Corrected / Won\u2019t Fix", colSpan: 10,
+      styles: { fillColor:[185,190,205], textColor:[40,40,70],
+                fontStyle:'bold', fontSize:7,
+                cellPadding:{ top:2, bottom:2, left:4, right:4 } } }]);
     fixed.forEach(t => body.push(toRow(t)));
   }
 
+  // ── Render table ─────────────────────────────────────────────
   doc.autoTable({
-    startY: 30,
-    head,
+    startY: margin + 30,
+    head: [['ID','Prio','Device & OS','Repro','Affected\nversions','Quick description','STR','Picture/Video link','Status','Comments']],
     body,
-    headStyles: { fillColor: [29, 36, 128], textColor: 255, fontSize: 8 },
-    bodyStyles: { fontSize: 8 },
-    alternateRowStyles: { fillColor: [245, 246, 251] },
-    didParseCell(data) {
-      if (data.section === 'body' && data.row.raw[0] === '──')
-        data.cell.styles.textColor = [150, 150, 150];
+    headStyles: {
+      fillColor:[29,36,128], textColor:255, fontSize:7,
+      fontStyle:'bold', halign:'center',
+      cellPadding:{ top:2, bottom:2, left:1.5, right:1.5 },
     },
+    bodyStyles: { fontSize:6.5, valign:'top', cellPadding:{ top:1.5, bottom:1.5, left:1.5, right:1.5 } },
+    alternateRowStyles: { fillColor:[248,249,252] },
     columnStyles: {
-      0: { cellWidth: 12 },
-      1: { cellWidth: 12 },
-      2: { cellWidth: 18 },
-      3: { cellWidth: 55 },
-      4: { cellWidth: 38 },
-      5: { cellWidth: 12 },
-      6: { cellWidth: 32 },
-      7: { cellWidth: 25 },
-      8: { cellWidth: 'auto' },
+      0: { cellWidth:9,  halign:'center' },
+      1: { cellWidth:11, halign:'center' },
+      2: { cellWidth:28 },
+      3: { cellWidth:12, halign:'center' },
+      4: { cellWidth:18, halign:'center' },
+      5: { cellWidth:38 },
+      6: { cellWidth:67 },
+      7: { cellWidth:25 },
+      8: { cellWidth:22, halign:'center' },
+      9: { cellWidth:'auto' },
+    },
+    didParseCell(data) {
+      if (data.section !== 'body') return;
+      // Skip category separator rows (first cell has colSpan object)
+      if (data.row.raw[0] && typeof data.row.raw[0] === 'object') return;
+      if (data.column.index === 1) {               // Prio
+        const fill = PRIO_FILL[data.cell.raw];
+        if (fill) {
+          data.cell.styles.fillColor = fill;
+          data.cell.styles.textColor = PRIO_TEXT[data.cell.raw];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+      if (data.column.index === 8) {               // Status
+        const fill = STATUS_FILL[data.cell.raw];
+        if (fill) {
+          data.cell.styles.fillColor = fill;
+          data.cell.styles.textColor = [255, 255, 255];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
     },
   });
 
@@ -1734,7 +1992,7 @@ function exportReportPDF() {
   const version = document.getElementById('reportVersion').value.trim() || CURRENT_GAME.version;
   const doc = buildPDF(list, name, version);
   if (!doc) return;
-  const slug = (name || 'report').toLowerCase().replace(/\s+/g, '-');
+  const slug = (name || 'report').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'report';
   doc.save(`${slug}.pdf`);
   closeReportModal();
 }
