@@ -1375,6 +1375,11 @@ function renderTable() {
 }
 
 function rowClick(evt, id) {
+  // Chrome fires a bubbling click on <tr> after the user selects an option from a native
+  // <select> inside the row. The stopPropagation listeners on the select handle most cases,
+  // but this guard is a belt-and-suspenders fallback: if the event's original target is
+  // inside an inline-edit select, ignore it — we never want option selection to open the drawer.
+  if (evt.target.closest('.inline-edit-select')) return;
   openDetailDrawer(id);
 }
 function rowKeydown(evt, id) {
