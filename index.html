@@ -433,13 +433,6 @@
           <option value="Won't Fix">Won't Fix</option>
           <option value="Corrected">Corrected</option>
         </select>
-        <select id="filterSeverity" onchange="applyFilters()">
-          <option value="">All Severities</option>
-          <option value="Critical">Critical</option>
-          <option value="High">High</option>
-          <option value="Medium">Medium</option>
-          <option value="Low">Low</option>
-        </select>
         <select id="filterCategory" onchange="applyFilters()">
           <option value="">All Categories</option>
           <option value="UI/Menu">UI/Menu</option>
@@ -474,7 +467,6 @@
               <th id="checkColHeader" class="row-check-col d-none"></th>
               <th class="sortable-col" style="width:55px"  onclick="toggleSort('id')">ID <span class="sort-icon" id="sortIcon-id">⇅</span></th>
               <th class="sortable-col" style="width:95px"  onclick="toggleSort('priority')">Priority <span class="sort-icon" id="sortIcon-priority">⇅</span></th>
-              <th class="sortable-col" style="width:95px"  onclick="toggleSort('severity')">Severity <span class="sort-icon" id="sortIcon-severity">⇅</span></th>
               <th class="sortable-col"                     onclick="toggleSort('title')">Title <span class="sort-icon" id="sortIcon-title">⇅</span></th>
               <th class="sortable-col" style="width:160px" onclick="toggleSort('device')">Device &amp; OS <span class="sort-icon" id="sortIcon-device">⇅</span></th>
               <th class="sortable-col" style="width:65px"  onclick="toggleSort('repro')">Repro <span class="sort-icon" id="sortIcon-repro">⇅</span></th>
@@ -1071,7 +1063,7 @@ function toggleSort(col) {
 }
 
 function updateSortIcons() {
-  ['id','priority','severity','title','device','repro','status','created'].forEach(col => {
+  ['id','priority','title','device','repro','status','created'].forEach(col => {
     const el = document.getElementById(`sortIcon-${col}`);
     if (!el) return;
     if (sortColumn === col) {
@@ -1342,7 +1334,7 @@ function renderTable() {
   updateSortIcons();
 
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="${selectMode ? 11 : 10}" class="text-center text-muted py-4">No bug tickets match the current filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${selectMode ? 10 : 9}" class="text-center text-muted py-4">No bug tickets match the current filters.</td></tr>`;
     return;
   }
 
@@ -1351,7 +1343,7 @@ function renderTable() {
     const isFixed = FIXED_STATUSES.has(t.status);
     const group   = isFixed ? 'fixed' : 'unfixed';
     if (lastGroup && lastGroup !== group) {
-      html += `<tr><td colspan="${selectMode ? 11 : 10}" style="background:#f8f9fc;padding:4px 8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:600;border-top:2px solid #dee2e6">✓ Corrected</td></tr>`;
+      html += `<tr><td colspan="${selectMode ? 10 : 9}" style="background:#f8f9fc;padding:4px 8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:600;border-top:2px solid #dee2e6">✓ Corrected</td></tr>`;
     }
     lastGroup = group;
 
@@ -1369,7 +1361,6 @@ function renderTable() {
       ${checkCell}
       <td class="text-muted small">#${t.id}</td>
       <td><span class="bug-badge ${priorityClass(t.priority)} inline-editable" title="Click to change priority" onclick="startInlineEdit(event,${t.id},'priority')">${esc(t.priority)}</span></td>
-      <td><span class="bug-badge ${severityClass(t.severity)} inline-editable" title="Click to change severity" onclick="startInlineEdit(event,${t.id},'severity')">${esc(t.severity)}</span></td>
       <td><span class="ticket-title-cell" title="${esc(t.title)}">${esc(t.title)}</span></td>
       <td class="small">${esc(t.deviceOs)}</td>
       <td class="repro-cell">${t.reproductionLevel}/5</td>
