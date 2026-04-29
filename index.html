@@ -234,6 +234,10 @@
     .row-check-col { width: 36px; }
     .row-check { cursor: pointer; }
 
+    /* Clickable row */
+    tr[role="button"]:hover td { background-color: rgba(13,110,253,.04); }
+    tr[role="button"]:focus-visible { outline: 2px solid #0d6efd; outline-offset: -2px; }
+
     /* Cosmetic */
     .placeholder-section { color: #aaa; text-align: center; padding: 3rem 1rem; font-size: .95rem; }
     .modal-dialog-scrollable .modal-body { max-height: 70vh; overflow-y: auto; }
@@ -1330,11 +1334,16 @@ function renderTable() {
     lastGroup = group;
 
     const checkCell = selectMode
-      ? `<td class="row-check-col"><input type="checkbox" class="row-check form-check-input" ${selectedIds.has(t.id) ? 'checked' : ''} onchange="toggleRowSelect(${t.id}, this.checked)" /></td>`
+      ? `<td class="row-check-col" onclick="event.stopPropagation()"><input type="checkbox" class="row-check form-check-input" ${selectedIds.has(t.id) ? 'checked' : ''} onchange="toggleRowSelect(${t.id}, this.checked)" /></td>`
       : '';
 
     html += `
-    <tr class="${isFixed ? 'text-muted' : ''}" style="${isFixed ? 'opacity:.75' : ''}">
+    <tr class="${isFixed ? 'text-muted' : ''}"
+        style="${isFixed ? 'opacity:.75;' : ''}cursor:pointer"
+        role="button" tabindex="0"
+        aria-label="View ticket #${t.id}: ${esc(t.title)}"
+        onclick="rowClick(event,${t.id})"
+        onkeydown="rowKeydown(event,${t.id})">
       ${checkCell}
       <td class="text-muted small">#${t.id}</td>
       <td><span class="bug-badge ${priorityClass(t.priority)}">${esc(t.priority)}</span></td>
@@ -1345,7 +1354,7 @@ function renderTable() {
       <td>${tagsHtml(t.tags)}</td>
       <td><span class="bug-badge ${statusClass(t.status)}">${esc(t.status)}</span></td>
       <td class="text-muted small">${fmtDate(t.createdAt)}</td>
-      <td>
+      <td onclick="event.stopPropagation()">
         <div class="d-flex gap-1">
           <button class="btn btn-sm btn-outline-secondary py-0 px-1" title="View" onclick="openDetailDrawer(${t.id})">&#128269;</button>
           <button class="btn btn-sm btn-outline-primary   py-0 px-1" title="Edit" onclick="openTicketModal(${t.id})">&#9998;</button>
@@ -1356,6 +1365,16 @@ function renderTable() {
   });
   tbody.innerHTML = html;
   updateSelectCount();
+}
+
+function rowClick(evt, id) {
+  openDetailDrawer(id);
+}
+function rowKeydown(evt, id) {
+  if (evt.key === 'Enter' || evt.key === ' ') {
+    evt.preventDefault();
+    openDetailDrawer(id);
+  }
 }
 
 
