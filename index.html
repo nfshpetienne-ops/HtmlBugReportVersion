@@ -1412,8 +1412,16 @@ function startInlineEdit(evt, id, field) {
     if (opt === originalValue) o.selected = true;
     select.appendChild(o);
   });
+  // Stop mousedown/pointerdown/click from bubbling to the row handler — must be
+  // registered before inserting into the DOM so they fire even on the initial .click() call below.
+  ['mousedown', 'pointerdown', 'click'].forEach(n =>
+    select.addEventListener(n, e => e.stopPropagation())
+  );
   badge.replaceWith(select);
   select.focus();
+  // Open the native dropdown immediately so the user doesn't need a second click.
+  // (focus() alone does not open a <select>; only a user-initiated click does.)
+  select.click();
 
   let committed = false;
 
