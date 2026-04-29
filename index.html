@@ -238,6 +238,13 @@
     tr[role="button"]:hover td { background-color: rgba(13,110,253,.04); }
     tr[role="button"]:focus-visible { outline: 2px solid #0d6efd; outline-offset: -2px; }
 
+    /* Inline-editable badges */
+    .inline-editable { cursor: pointer; }
+    .inline-editable:hover { filter: brightness(.88); }
+    .inline-edit-select { font-size:.72rem; font-weight:600; padding:1px 4px; border-radius:12px; border:1px solid #adb5bd; background:#fff; cursor:pointer; max-width:110px; }
+    .inline-edit-spinner { display:inline-block; font-size:.72rem; padding:2px 8px; animation:inline-spin .4s linear infinite; opacity:.6; }
+    @keyframes inline-spin { to { transform:rotate(360deg); } }
+
     /* Cosmetic */
     .placeholder-section { color: #aaa; text-align: center; padding: 3rem 1rem; font-size: .95rem; }
     .modal-dialog-scrollable .modal-body { max-height: 70vh; overflow-y: auto; }
@@ -1346,13 +1353,13 @@ function renderTable() {
         onkeydown="rowKeydown(event,${t.id})">
       ${checkCell}
       <td class="text-muted small">#${t.id}</td>
-      <td><span class="bug-badge ${priorityClass(t.priority)}">${esc(t.priority)}</span></td>
-      <td><span class="bug-badge ${severityClass(t.severity)}">${esc(t.severity)}</span></td>
+      <td><span class="bug-badge ${priorityClass(t.priority)} inline-editable" title="Click to change priority" onclick="startInlineEdit(event,${t.id},'priority')">${esc(t.priority)}</span></td>
+      <td><span class="bug-badge ${severityClass(t.severity)} inline-editable" title="Click to change severity" onclick="startInlineEdit(event,${t.id},'severity')">${esc(t.severity)}</span></td>
       <td><span class="ticket-title-cell" title="${esc(t.title)}">${esc(t.title)}</span></td>
       <td class="small">${esc(t.deviceOs)}</td>
       <td class="repro-cell">${t.reproductionLevel}/5</td>
       <td>${tagsHtml(t.tags)}</td>
-      <td><span class="bug-badge ${statusClass(t.status)}">${esc(t.status)}</span></td>
+      <td><span class="bug-badge ${statusClass(t.status)} inline-editable" title="Click to change status" onclick="startInlineEdit(event,${t.id},'status')">${esc(t.status)}</span></td>
       <td class="text-muted small">${fmtDate(t.createdAt)}</td>
       <td onclick="event.stopPropagation()">
         <div class="d-flex gap-1">
@@ -1375,6 +1382,95 @@ function rowKeydown(evt, id) {
     evt.preventDefault();
     openDetailDrawer(id);
   }
+}
+
+function startInlineEdit(evt, id, field) {
+  evt.stopPropagation();
+
+  // If another inline edit is already open, cancel it and bail — user can click again.
+  if (document.querySelector('#ticketTableBody .inline-edit-select')) {
+    renderTable();
+    return;
+  }
+
+  const ticket = tickets.find(t => t.id === id);
+  if (!ticket) return;
+
+  const badge   = evt.currentTarget;
+  const options = field === 'priority' ? PRIORITIES
+                : field === 'severity' ? SEVERITIES
+                : STATUSES;
+  const originalValue     = ticket[field];
+  const originalUpdatedAt = ticket.updatedAt;
+
+  // Replace badge with a styled <select>
+  const select = document.createElement('select');
+  select.className = 'inline-edit-select';
+  options.forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt; o.textContent = opt;
+    if (opt === originalValue) o.selected = true;
+    select.appendChild(o);
+  });
+  badge.replaceWith(select);
+  select.focus();
+
+  let committed = false;
+
+  function commit() {
+    if (committed) return;
+    committed = true;
+    const newValue = select.value;
+
+    // Show spinner for one paint frame so the loading state is visible
+    const spinner = document.createElement('span');
+    spinner.className = 'inline-edit-spinner';
+    spinner.textContent = '\u21bb';
+    select.replaceWith(spinner);
+
+    requestAnimationFrame(() => {
+      if (newValue !== originalValue) {
+        const now = new Date();
+        ticket[field]      = newValue;
+        ticket.updatedAt   = now;
+        ticket.editHistory.push({
+          field,
+          oldValue:  String(originalValue),
+          newValue:  String(newValue),
+          changedBy: CURRENT_USER,
+          changedAt: now,
+        });
+        try {
+          saveTickets();
+        } catch (_) {
+          // Revert on save failure
+          ticket[field]    = originalValue;
+          ticket.updatedAt = originalUpdatedAt;
+          ticket.editHistory.pop();
+          try { saveTickets(); } catch (_) {}
+        }
+      }
+      renderTable();
+      // Keep drawer in sync if it's showing this ticket
+      if (drawerTicketId === id) openDetailDrawer(id);
+    });
+  }
+
+  function cancel() {
+    if (committed) return;
+    committed = true;
+    renderTable();
+  }
+
+  select.addEventListener('change', commit);
+  // Blur fires after change; guard with committed flag and DOM check to avoid double render
+  select.addEventListener('blur', () => setTimeout(() => {
+    if (!committed && document.body.contains(select)) cancel();
+  }, 100));
+  select.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
+    if (e.key === 'Enter')  { e.preventDefault();  commit(); }
+  });
 }
 
 
