@@ -260,6 +260,12 @@
     .inline-edit-option:focus { background: #f0f2ff; color: #1d2480; outline: none; }
     .inline-edit-option.active { font-weight: 700; background: #e8eafe; color: #1d2480; }
 
+    /* Partner (read-only) view banner */
+    .partner-banner {
+      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;
+      padding: .65rem 1rem; margin-bottom: 1rem; font-size: .84rem; color: #1e40af;
+    }
+
     /* Cosmetic */
     .placeholder-section { color: #aaa; text-align: center; padding: 3rem 1rem; font-size: .95rem; }
     .modal-dialog-scrollable .modal-body { max-height: 70vh; overflow-y: auto; }
@@ -359,6 +365,7 @@
         <button class="tab-btn" onclick="setTab('sdk', this)">SDK List</button>
         <button class="tab-btn" onclick="setTab('integration', this)">Integration Manager</button>
         <button class="tab-btn" onclick="setTab('bugs', this)" id="bugTabBtn">Bug Reports</button>
+        <button class="tab-btn" onclick="setTab('partner', this)">👁 Partner View</button>
       </div>
     </div>
 
@@ -481,6 +488,71 @@
       </div>
 
     </div><!-- /tab-bugs -->
+
+    <!-- ══════════════════════════════════════════════════════════
+         PARTNER VIEW TAB — read-only, shared with external partners
+    ══════════════════════════════════════════════════════════ -->
+    <div id="tab-partner" class="tab-pane">
+
+      <div class="partner-banner">
+        <strong>👁 Partner View</strong> — Read-only shared view for external partners.
+        Tickets can be opened and filtered, but not created, edited, or deleted.
+      </div>
+
+      <div class="filter-bar">
+        <select id="partnerFilterStatus" onchange="applyPartnerFilters()">
+          <option value="">All Statuses</option>
+          <option value="To correct">To correct</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Standby">Standby</option>
+          <option value="Duplicate">Duplicate</option>
+          <option value="Won't Fix">Won't Fix</option>
+          <option value="Corrected">Corrected</option>
+        </select>
+        <select id="partnerFilterCategory" onchange="applyPartnerFilters()">
+          <option value="">All Categories</option>
+          <option value="UI/Menu">UI/Menu</option>
+          <option value="Gameplay">Gameplay</option>
+          <option value="System">System</option>
+          <option value="In-App Purchase">In-App Purchase</option>
+          <option value="Audio/Video">Audio/Video</option>
+          <option value="Network">Network</option>
+          <option value="Other">Other</option>
+        </select>
+        <select id="partnerFilterTag" onchange="applyPartnerFilters()">
+          <option value="">All Tags</option>
+          <option value="UI">UI</option>
+          <option value="In-App Purchase">In-App Purchase</option>
+          <option value="System">System</option>
+          <option value="Gameplay">Gameplay</option>
+          <option value="Mayo">Mayo</option>
+        </select>
+        <input id="partnerFilterSearch" type="search" class="filter-search"
+               placeholder="🔍 Search title…" oninput="applyPartnerFilters()" />
+      </div>
+
+      <div id="partnerResultsCount" class="small text-muted mb-2"></div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle bug-ticket-table mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width:55px">ID</th>
+              <th style="width:95px">Priority</th>
+              <th>Title</th>
+              <th style="width:160px">Device &amp; OS</th>
+              <th style="width:65px">Repro</th>
+              <th style="width:110px">Tags</th>
+              <th style="width:120px">Status</th>
+              <th style="width:105px">Created</th>
+            </tr>
+          </thead>
+          <tbody id="partnerTableBody"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /tab-partner -->
+
   </div><!-- /main-content -->
 </div><!-- /app-shell -->
 
@@ -839,7 +911,8 @@ let sortDirection = '';
 
 let deleteConfirmId = null;
 
-let filters = { status: '', severity: '', category: '', tag: '', search: '' };
+let filters = { status: '', category: '', tag: '', search: '' };
+let isPartnerView = false;
 let reportTicketSelection = new Set();
 
 // Device selector state
@@ -1038,7 +1111,6 @@ function getFiltered() {
 
 function applyFilters() {
   filters.status   = document.getElementById('filterStatus').value;
-  filters.severity = document.getElementById('filterSeverity').value;
   filters.category = document.getElementById('filterCategory').value;
   filters.tag      = document.getElementById('filterTag').value;
   filters.search   = document.getElementById('filterSearch').value.trim();
@@ -1378,6 +1450,61 @@ function renderTable() {
   tbody.innerHTML = html;
   updateSelectCount();
 }
+
+function renderPartnerTable() {
+  const statusFilter   = document.getElementById('partnerFilterStatus').value;
+  const categoryFilter = document.getElementById('partnerFilterCategory').value;
+  const tagFilter      = document.getElementById('partnerFilterTag').value;
+  const searchFilter   = document.getElementById('partnerFilterSearch').value.trim().toLowerCase();
+
+  const filtered = sortTickets(tickets.filter(t => {
+    if (statusFilter   && t.status              !== statusFilter)   return false;
+    if (categoryFilter && (t.category || '')    !== categoryFilter) return false;
+    if (tagFilter      && !(t.tags || []).includes(tagFilter))      return false;
+    if (searchFilter   &&
+        !t.title.toLowerCase().includes(searchFilter) &&
+        !String(t.id).includes(searchFilter))                       return false;
+    return true;
+  }));
+
+  const tbody = document.getElementById('partnerTableBody');
+  document.getElementById('partnerResultsCount').textContent =
+    `Showing ${filtered.length} of ${tickets.length} ticket${tickets.length !== 1 ? 's' : ''}`;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No tickets match the current filters.</td></tr>`;
+    return;
+  }
+
+  let html = '', lastGroup = null;
+  filtered.forEach(t => {
+    const isFixed = FIXED_STATUSES.has(t.status);
+    const group   = isFixed ? 'fixed' : 'unfixed';
+    if (lastGroup && lastGroup !== group) {
+      html += `<tr><td colspan="8" style="background:#f8f9fc;padding:4px 8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:600;border-top:2px solid #dee2e6">✓ Corrected</td></tr>`;
+    }
+    lastGroup = group;
+    html += `
+    <tr class="${isFixed ? 'text-muted' : ''}"
+        style="${isFixed ? 'opacity:.75;' : ''}cursor:pointer"
+        role="button" tabindex="0"
+        aria-label="Open bug #${t.id}: ${esc(t.title)}"
+        onclick="rowClick(event,${t.id})"
+        onkeydown="rowKeydown(event,${t.id})">
+      <td class="text-muted small">#${t.id}</td>
+      <td><span class="bug-badge ${priorityClass(t.priority)}">${esc(t.priority)}</span></td>
+      <td><span class="ticket-title-cell" title="${esc(t.title)}">${esc(t.title)}</span></td>
+      <td class="small">${esc(t.deviceOs)}</td>
+      <td class="repro-cell">${t.reproductionLevel}/5</td>
+      <td>${tagsHtml(t.tags)}</td>
+      <td><span class="bug-badge ${statusClass(t.status)}">${esc(t.status)}</span></td>
+      <td class="text-muted small">${fmtDate(t.createdAt)}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+function applyPartnerFilters() { renderPartnerTable(); }
 
 function rowClick(evt, id) {
   closeInlineEdit();
@@ -1799,6 +1926,7 @@ function openDetailDrawer(id) {
   document.getElementById('drawerTicketId').textContent = `#${t.id}`;
   document.getElementById('drawerTitle').textContent    = t.title;
   document.getElementById('drawerEditBtn').onclick      = () => { closeDetailDrawer(); openTicketModal(id); };
+  document.getElementById('drawerEditBtn').style.display = isPartnerView ? 'none' : '';
 
   const commentsHtml = t.comments.length
     ? t.comments.map(c => `<div class="comment-item"><div class="comment-meta">${esc(c.author)} · ${fmtDateTime(c.createdAt)}</div><div class="comment-text">${esc(c.text)}</div></div>`).join('')
@@ -2105,6 +2233,8 @@ function setTab(name, btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active','active-v2'));
   document.getElementById(`tab-${name}`).classList.add('active');
   if (btn) btn.classList.add(name === 'bugs' ? 'active-v2' : 'active');
+  isPartnerView = (name === 'partner');
+  if (name === 'partner') renderPartnerTable();
 }
 
 
