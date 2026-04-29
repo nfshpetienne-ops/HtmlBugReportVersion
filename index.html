@@ -1348,7 +1348,7 @@ function renderTable() {
     <tr class="${isFixed ? 'text-muted' : ''}"
         style="${isFixed ? 'opacity:.75;' : ''}cursor:pointer"
         role="button" tabindex="0"
-        aria-label="View ticket #${t.id}: ${esc(t.title)}"
+        aria-label="Open bug #${t.id}: ${esc(t.title)}"
         onclick="rowClick(event,${t.id})"
         onkeydown="rowKeydown(event,${t.id})">
       ${checkCell}
@@ -1363,7 +1363,6 @@ function renderTable() {
       <td class="text-muted small">${fmtDate(t.createdAt)}</td>
       <td onclick="event.stopPropagation()">
         <div class="d-flex gap-1">
-          <button class="btn btn-sm btn-outline-secondary py-0 px-1" title="View" onclick="openDetailDrawer(${t.id})">&#128269;</button>
           <button class="btn btn-sm btn-outline-primary   py-0 px-1" title="Edit" onclick="openTicketModal(${t.id})">&#9998;</button>
           <button class="btn btn-sm btn-outline-danger    py-0 px-1" title="Delete" onclick="showDeleteConfirm(${t.id})">&#128465;</button>
         </div>
@@ -2115,6 +2114,69 @@ document.addEventListener('click', function(e) {
   const container = document.getElementById('deviceMultiSelect');
   if (container && !container.contains(e.target)) deviceClose();
 });
+
+
+// ══════════════════════════════════════════════════════════════
+// SMOKE TESTS — run from the browser console: runSmokeTests()
+// No test framework; verifies the three bug-list regressions.
+// ══════════════════════════════════════════════════════════════
+
+function runSmokeTests() {
+  let pass = 0, fail = 0;
+  function assert(cond, name) {
+    if (cond) { console.log('\u2705 PASS', name); pass++; }
+    else       { console.error('\u274c FAIL', name); fail++; }
+  }
+
+  // ── 1. rowClick guard: drawer must NOT open when target is .inline-edit-select ──
+  {
+    const fakeSelect = document.createElement('select');
+    fakeSelect.className = 'inline-edit-select';
+    document.body.appendChild(fakeSelect);
+    let drawerOpened = false;
+    const orig = window.openDetailDrawer;
+    window.openDetailDrawer = () => { drawerOpened = true; };
+    rowClick({ target: fakeSelect }, -1);
+    window.openDetailDrawer = orig;
+    document.body.removeChild(fakeSelect);
+    assert(!drawerOpened,
+      'rowClick guard: selecting an inline-edit option does NOT open the drawer (Chrome regression)');
+  }
+
+  // ── 2. rowClick guard: drawer DOES open for normal row clicks ──
+  {
+    const normalCell = document.createElement('td');
+    document.body.appendChild(normalCell);
+    let drawerOpened = false;
+    const orig = window.openDetailDrawer;
+    window.openDetailDrawer = () => { drawerOpened = true; };
+    rowClick({ target: normalCell }, -1);
+    window.openDetailDrawer = orig;
+    document.body.removeChild(normalCell);
+    assert(drawerOpened,
+      'rowClick guard: normal cell click still opens the drawer');
+  }
+
+  // ── 3. Magnifying-glass "View" button is absent from rendered rows ──
+  {
+    renderTable();
+    const viewBtns = document.querySelectorAll('#ticketTableBody button[title="View"]');
+    assert(viewBtns.length === 0,
+      'Magnifying-glass View button removed from all rows (' + viewBtns.length + ' found)');
+  }
+
+  // ── 4. Each row has role=button and a meaningful aria-label ──
+  {
+    renderTable();
+    const rows = document.querySelectorAll('#ticketTableBody tr[role="button"]');
+    const allLabelled = [...rows].every(r => /^Open bug #\d+:/.test(r.getAttribute('aria-label') || ''));
+    assert(rows.length > 0 && allLabelled,
+      'All data rows have role=button and aria-label starting with "Open bug #"');
+  }
+
+  console.log('\nSmoke tests: ' + pass + ' passed, ' + fail + ' failed');
+  return { pass, fail };
+}
 
 </script>
 </body>
