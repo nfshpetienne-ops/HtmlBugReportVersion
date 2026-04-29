@@ -241,9 +241,24 @@
     /* Inline-editable badges */
     .inline-editable { cursor: pointer; }
     .inline-editable:hover { filter: brightness(.88); }
-    .inline-edit-select { font-size:.72rem; font-weight:600; padding:1px 4px; border-radius:12px; border:1px solid #adb5bd; background:#fff; cursor:pointer; max-width:110px; }
-    .inline-edit-spinner { display:inline-block; font-size:.72rem; padding:2px 8px; animation:inline-spin .4s linear infinite; opacity:.6; }
-    @keyframes inline-spin { to { transform:rotate(360deg); } }
+
+    /* Custom inline-edit dropdown — appended to <body> so it is never clipped by a table cell
+       and so clicks on its options cannot bubble up into any <tr> row handler.             */
+    .inline-edit-dropdown {
+      position: fixed; z-index: 9000;
+      background: #fff; border: 1px solid #dee2e6;
+      border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.15);
+      min-width: 110px; padding: 3px 0;
+    }
+    .inline-edit-option {
+      display: block; width: 100%; padding: 5px 12px;
+      font-size: .75rem; text-align: left;
+      background: none; border: none; cursor: pointer;
+      color: #333; white-space: nowrap;
+    }
+    .inline-edit-option:hover,
+    .inline-edit-option:focus { background: #f0f2ff; color: #1d2480; outline: none; }
+    .inline-edit-option.active { font-weight: 700; background: #e8eafe; color: #1d2480; }
 
     /* Cosmetic */
     .placeholder-section { color: #aaa; text-align: center; padding: 3rem 1rem; font-size: .95rem; }
@@ -1374,28 +1389,28 @@ function renderTable() {
 }
 
 function rowClick(evt, id) {
-  // Chrome fires a bubbling click on <tr> after the user selects an option from a native
-  // <select> inside the row. The stopPropagation listeners on the select handle most cases,
-  // but this guard is a belt-and-suspenders fallback: if the event's original target is
-  // inside an inline-edit select, ignore it — we never want option selection to open the drawer.
-  if (evt.target.closest('.inline-edit-select')) return;
+  closeInlineEdit();
   openDetailDrawer(id);
 }
 function rowKeydown(evt, id) {
   if (evt.key === 'Enter' || evt.key === ' ') {
     evt.preventDefault();
+    closeInlineEdit();
     openDetailDrawer(id);
   }
+}
+
+// Close the inline-edit dropdown if one is open. Safe to call when none exists.
+function closeInlineEdit() {
+  const el = document.getElementById('inlineEditDropdown');
+  if (el) el.remove();
 }
 
 function startInlineEdit(evt, id, field) {
   evt.stopPropagation();
 
-  // If another inline edit is already open, cancel it and bail — user can click again.
-  if (document.querySelector('#ticketTableBody .inline-edit-select')) {
-    renderTable();
-    return;
-  }
+  // Close any already-open inline edit (e.g. user clicked a different badge).
+  closeInlineEdit();
 
   const ticket = tickets.find(t => t.id === id);
   if (!ticket) return;
@@ -1407,82 +1422,82 @@ function startInlineEdit(evt, id, field) {
   const originalValue     = ticket[field];
   const originalUpdatedAt = ticket.updatedAt;
 
-  // Replace badge with a styled <select>
-  const select = document.createElement('select');
-  select.className = 'inline-edit-select';
+  // Build a custom dropdown appended to <body>.
+  // Using document.body (not the <td>/<tr>) means:
+  //   1. The dropdown is never clipped by table overflow.
+  //   2. Clicks on options physically cannot bubble into any <tr> row handler,
+  //      which is the structural fix for the Chrome post-selection click bug.
+  const rect     = badge.getBoundingClientRect();
+  const dropdown = document.createElement('div');
+  dropdown.id        = 'inlineEditDropdown';
+  dropdown.className = 'inline-edit-dropdown';
+  dropdown.style.top  = (rect.bottom + 4) + 'px';
+  dropdown.style.left = rect.left + 'px';
+
   options.forEach(opt => {
-    const o = document.createElement('option');
-    o.value = opt; o.textContent = opt;
-    if (opt === originalValue) o.selected = true;
-    select.appendChild(o);
-  });
-  // Stop mousedown/pointerdown/click from bubbling to the row handler — must be
-  // registered before inserting into the DOM so they fire even on the initial .click() call below.
-  ['mousedown', 'pointerdown', 'click'].forEach(n =>
-    select.addEventListener(n, e => e.stopPropagation())
-  );
-  badge.replaceWith(select);
-  select.focus();
-  // Open the native dropdown immediately so the user doesn't need a second click.
-  // (focus() alone does not open a <select>; only a user-initiated click does.)
-  select.click();
-
-  let committed = false;
-
-  function commit() {
-    if (committed) return;
-    committed = true;
-    const newValue = select.value;
-
-    // Show spinner for one paint frame so the loading state is visible
-    const spinner = document.createElement('span');
-    spinner.className = 'inline-edit-spinner';
-    spinner.textContent = '\u21bb';
-    select.replaceWith(spinner);
-
-    requestAnimationFrame(() => {
-      if (newValue !== originalValue) {
-        const now = new Date();
-        ticket[field]      = newValue;
-        ticket.updatedAt   = now;
-        ticket.editHistory.push({
-          field,
-          oldValue:  String(originalValue),
-          newValue:  String(newValue),
-          changedBy: CURRENT_USER,
-          changedAt: now,
-        });
-        try {
-          saveTickets();
-        } catch (_) {
-          // Revert on save failure
-          ticket[field]    = originalValue;
-          ticket.updatedAt = originalUpdatedAt;
-          ticket.editHistory.pop();
-          try { saveTickets(); } catch (_) {}
-        }
-      }
-      renderTable();
-      // Keep drawer in sync if it's showing this ticket
-      if (drawerTicketId === id) openDetailDrawer(id);
+    const btn = document.createElement('button');
+    btn.type      = 'button';
+    btn.className = 'inline-edit-option' + (opt === originalValue ? ' active' : '');
+    btn.textContent = opt;
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      commitEdit(opt !== originalValue ? opt : null);
     });
-  }
-
-  function cancel() {
-    if (committed) return;
-    committed = true;
-    renderTable();
-  }
-
-  select.addEventListener('change', commit);
-  // Blur fires after change; guard with committed flag and DOM check to avoid double render
-  select.addEventListener('blur', () => setTimeout(() => {
-    if (!committed && document.body.contains(select)) cancel();
-  }, 100));
-  select.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
-    if (e.key === 'Enter')  { e.preventDefault();  commit(); }
+    dropdown.appendChild(btn);
   });
+
+  document.body.appendChild(dropdown);
+
+  // Focus the currently-active option so keyboard nav works right away.
+  (dropdown.querySelector('.active') || dropdown.querySelector('.inline-edit-option')).focus();
+
+  // Arrow-key navigation + Escape/Enter inside the dropdown.
+  dropdown.addEventListener('keydown', e => {
+    const items = [...dropdown.querySelectorAll('.inline-edit-option')];
+    const idx   = items.indexOf(document.activeElement);
+    if      (e.key === 'ArrowDown')  { e.preventDefault(); items[(idx + 1) % items.length].focus(); }
+    else if (e.key === 'ArrowUp')    { e.preventDefault(); items[(idx - 1 + items.length) % items.length].focus(); }
+    else if (e.key === 'Escape')     { e.stopPropagation(); closeInlineEdit(); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.activeElement.click(); }
+  });
+
+  // Close on any click outside the dropdown (capture phase fires before element handlers).
+  function outsideClick(e) {
+    if (dropdown.contains(e.target)) return;
+    closeInlineEdit();
+    document.removeEventListener('click', outsideClick, true);
+    // If the user clicked the same badge that opened us, stop propagation so its
+    // onclick doesn't immediately reopen the dropdown.
+    if (badge === e.target || badge.contains(e.target)) e.stopPropagation();
+  }
+  document.addEventListener('click', outsideClick, true);
+
+  function commitEdit(newValue) {
+    closeInlineEdit();
+    document.removeEventListener('click', outsideClick, true);
+    if (newValue === null) return; // selected same value — nothing to save
+
+    const now = new Date();
+    ticket[field]    = newValue;
+    ticket.updatedAt = now;
+    ticket.editHistory.push({
+      field,
+      oldValue:  String(originalValue),
+      newValue:  String(newValue),
+      changedBy: CURRENT_USER,
+      changedAt: now,
+    });
+    try {
+      saveTickets();
+    } catch (_) {
+      ticket[field]    = originalValue;
+      ticket.updatedAt = originalUpdatedAt;
+      ticket.editHistory.pop();
+      try { saveTickets(); } catch (_) {}
+    }
+    renderTable();
+    if (drawerTicketId === id) openDetailDrawer(id);
+  }
 }
 
 
@@ -2128,22 +2143,21 @@ function runSmokeTests() {
     else       { console.error('\u274c FAIL', name); fail++; }
   }
 
-  // ── 1. rowClick guard: drawer must NOT open when target is .inline-edit-select ──
+  // ── 1. Inline-edit dropdown is on document.body, NOT inside any <tr> ──
+  //    Structural guarantee that clicks on options can never bubble to a row handler,
+  //    which is the fix for the Chrome post-selection click regression.
   {
-    const fakeSelect = document.createElement('select');
-    fakeSelect.className = 'inline-edit-select';
-    document.body.appendChild(fakeSelect);
-    let drawerOpened = false;
-    const orig = window.openDetailDrawer;
-    window.openDetailDrawer = () => { drawerOpened = true; };
-    rowClick({ target: fakeSelect }, -1);
-    window.openDetailDrawer = orig;
-    document.body.removeChild(fakeSelect);
-    assert(!drawerOpened,
-      'rowClick guard: selecting an inline-edit option does NOT open the drawer (Chrome regression)');
+    const sentinel = document.createElement('div');
+    sentinel.id = 'inlineEditDropdown';
+    document.body.appendChild(sentinel);
+    const isDirectChildOfBody = sentinel.parentElement === document.body;
+    const isOutsideAnyRow     = !sentinel.closest('tr');
+    closeInlineEdit();
+    assert(isDirectChildOfBody && isOutsideAnyRow,
+      'Inline-edit dropdown lives on document.body (not inside any <tr>) — Chrome click bubble cannot reach row handler');
   }
 
-  // ── 2. rowClick guard: drawer DOES open for normal row clicks ──
+  // ── 2. rowClick always opens drawer (no guard needed — dropdown is outside the row) ──
   {
     const normalCell = document.createElement('td');
     document.body.appendChild(normalCell);
@@ -2154,7 +2168,7 @@ function runSmokeTests() {
     window.openDetailDrawer = orig;
     document.body.removeChild(normalCell);
     assert(drawerOpened,
-      'rowClick guard: normal cell click still opens the drawer');
+      'rowClick: normal cell click opens the drawer');
   }
 
   // ── 3. Magnifying-glass "View" button is absent from rendered rows ──
